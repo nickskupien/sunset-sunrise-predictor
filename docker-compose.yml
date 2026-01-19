@@ -30,9 +30,8 @@ services:
         condition: service_healthy
     volumes:
       - ./:/app
-      - /app/node_modules
-      - /app/apps/api/node_modules
-      - /app/packages/db/node_modules
+      - api_node_modules:/app/apps/api/node_modules
+      - root_node_modules:/app/node_modules
 
   worker:
     build:
@@ -46,9 +45,8 @@ services:
         condition: service_healthy
     volumes:
       - ./:/app
-      - /app/node_modules
-      - /app/apps/worker/node_modules
-      - /app/packages/db/node_modules
+      - worker_node_modules:/app/apps/worker/node_modules
+      - root_node_modules:/app/node_modules
 
   web:
     build:
@@ -64,9 +62,12 @@ services:
       - api
     volumes:
       - ./:/app
-      - /app/node_modules
-      - /app/apps/web/node_modules
-      - /app/packages/contracts/node_modules
+      - web_node_modules:/app/apps/web/node_modules
+      - root_node_modules:/app/node_modules
 
 volumes:
   pgdata:
+  root_node_modules:
+  api_node_modules:
+  worker_node_modules:
+  web_node_modules:
