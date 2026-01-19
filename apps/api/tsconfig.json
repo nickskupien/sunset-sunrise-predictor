@@ -1,11 +1,7 @@
 {
+  "extends": "@sunset/config/tsconfig/node.json",
   "compilerOptions": {
-    "target": "ES2022",
-    "module": "ES2022",
-    "moduleResolution": "Bundler",
-    "strict": true,
-    "skipLibCheck": true,
-    "types": ["node"]
+    "outDir": "dist"
   },
   "include": ["src/**/*.ts"]
 }

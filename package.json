@@ -9,7 +9,15 @@
     "dev": "pnpm -r dev",
     "build": "pnpm -r build",
     "typecheck": "pnpm -r typecheck",
+    "lint": "pnpm -r lint",
     "db:generate": "pnpm --filter @sunset/db db:generate",
     "db:migrate": "pnpm --filter @sunset/db db:migrate"
+  },
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^8.0.0",
+    "@typescript-eslint/parser": "^8.0.0",
+    "eslint": "^9.0.0",
+    "eslint-config-next": "^14.2.5",
+    "prettier": "^3.3.0"
   }
 }

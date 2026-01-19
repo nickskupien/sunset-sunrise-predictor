@@ -1,12 +1,9 @@
 import { createDb } from "@sunset/db";
+import { getEnv } from "./config/env.js";
 
-const databaseUrl = process.env.DATABASE_URL;
-if (!databaseUrl) {
-  console.error("DATABASE_URL missing");
-  process.exit(1);
-}
+const env = getEnv();
 
-const { pool } = createDb(databaseUrl);
+const { pool } = createDb(env.DATABASE_URL);
 
 async function main() {
   const now = (await pool.query("select now()")).rows[0].now;

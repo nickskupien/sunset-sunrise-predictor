@@ -1,6 +1,9 @@
 import Fastify from "fastify";
-import { registerHealthRoutes } from "./routes/health.js";
-import { registerDbHealthRoutes } from "./routes/dbHealth.js";
+import { registerHealthRoutes } from "./http/health.js";
+import { registerDbHealthRoutes } from "./http/dbHealth.js";
+import { getEnv } from "./config/env.js";
+
+const env = getEnv();
 
 const app = Fastify({
   logger: true
@@ -9,10 +12,8 @@ const app = Fastify({
 await registerHealthRoutes(app);
 await registerDbHealthRoutes(app);
 
-const port = Number(process.env.PORT ?? 3001);
-
 try {
-  await app.listen({ port, host: "0.0.0.0" });
+  await app.listen({ port: env.PORT, host: "0.0.0.0" });
 } catch (err) {
   app.log.error(err);
   process.exit(1);

@@ -3,11 +3,12 @@ FROM node:20-alpine
 WORKDIR /app
 RUN corepack enable
 
-COPY package.json pnpm-workspace.yaml /app/
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml /app/
 COPY apps/worker/package.json /app/apps/worker/package.json
 COPY packages/db/package.json /app/packages/db/package.json
+COPY packages/config/package.json /app/packages/config/package.json
 
-RUN pnpm install
+RUN pnpm install --frozen-lockfile
 
 COPY . /app
 
