@@ -1,4 +1,5 @@
 import { DbHealthSchema, HealthSchema } from "@sunset/contracts";
+import { getEnv } from "../src/config/env";
 
 async function fetchJson(url: string) {
   const res = await fetch(url, { cache: "no-store" });
@@ -7,7 +8,8 @@ async function fetchJson(url: string) {
 }
 
 export default async function Home() {
-  const base = process.env.API_BASE_URL ?? "http://localhost:3001";
+  const env = getEnv();
+  const base = env.API_BASE_URL;
 
   const healthRaw = await fetchJson(`${base}/health`);
   const dbRaw = await fetchJson(`${base}/db/health`);

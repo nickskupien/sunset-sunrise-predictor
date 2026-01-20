@@ -2,17 +2,28 @@
   "name": "@sunset/config",
   "version": "0.0.1",
   "private": true,
-  "type": "commonjs",
+  "type": "module",
   "exports": {
     "./tsconfig/base.json": "./tsconfig/base.json",
     "./tsconfig/node.json": "./tsconfig/node.json",
     "./tsconfig/browser.json": "./tsconfig/browser.json",
     "./tsconfig/next.json": "./tsconfig/next.json",
-    "./eslint/base": "./eslint/base.cjs",
-    "./eslint/node": "./eslint/node.cjs",
-    "./eslint/next": "./eslint/next.cjs",
-    "./eslint/web-boundaries": "./eslint/web-boundaries.cjs",
+    "./eslint/base": "./eslint/base.mjs",
+    "./eslint/node": "./eslint/node.mjs",
+    "./eslint/next": "./eslint/next.mjs",
+    "./eslint/web-boundaries": "./eslint/web-boundaries.mjs",
     "./prettier": "./prettier/prettier.cjs"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.0.0",
+    "@eslint/compat": "^2.0.1",
+    "@eslint/eslintrc": "^3.3.3",
+    "@typescript-eslint/eslint-plugin": "^8.0.0",
+    "@typescript-eslint/parser": "^8.0.0",
+    "eslint": "^9.0.0",
+    "eslint-config-next": "^16.1.4",
+    "typescript-eslint": "^8.0.0",
+    "globals": "^17.0.0"
   }
 }
 
