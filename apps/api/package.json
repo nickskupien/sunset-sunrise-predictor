@@ -12,12 +12,12 @@
   "dependencies": {
     "@sunset/contracts": "workspace:*",
     "@sunset/db": "workspace:*",
-    "fastify": "^4.28.1",
-    "zod": "^3.23.8"
+    "fastify": "^5.7.1",
+    "zod": "^4.3.5"
   },
   "devDependencies": {
     "@sunset/config": "workspace:*",
-    "tsx": "^4.16.2",
-    "typescript": "^5.5.4"
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
   }
 }

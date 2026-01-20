@@ -14,10 +14,10 @@
     "db:migrate": "pnpm --filter @sunset/db db:migrate"
   },
   "devDependencies": {
-    "@typescript-eslint/eslint-plugin": "^8.0.0",
-    "@typescript-eslint/parser": "^8.0.0",
-    "eslint": "^9.0.0",
-    "eslint-config-next": "^14.2.5",
-    "prettier": "^3.3.0"
+    "@typescript-eslint/eslint-plugin": "^8.53.1",
+    "@typescript-eslint/parser": "^8.53.1",
+    "eslint": "^9.39.2",
+    "eslint-config-next": "^16.1.4",
+    "prettier": "^3.8.0"
   }
 }

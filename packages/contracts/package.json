@@ -14,9 +14,9 @@
   },
   "devDependencies": {
     "@sunset/config": "workspace:*",
-    "typescript": "^5.5.4"
+    "typescript": "^5.9.3"
   },
   "dependencies": {
-    "zod": "^3.23.8"
+    "zod": "^4.3.5"
   }
 }
