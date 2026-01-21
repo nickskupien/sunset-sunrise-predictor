@@ -1,1 +1,1 @@
-module.exports = require("@sunset/config/prettier");
+module.exports = require("./packages/config/prettier/prettier.cjs");
