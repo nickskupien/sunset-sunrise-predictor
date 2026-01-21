@@ -10,14 +10,14 @@ export async function registerDbHealthRoutes(app: FastifyInstance) {
       return {
         ok: true,
         dbTime: now,
-        time: new Date().toISOString()
+        time: new Date().toISOString(),
       };
     } catch (err) {
       request.log.error(err, "DB health check failed");
       return reply.code(503).send({
         ok: false,
         error: "Database connection failed",
-        time: new Date().toISOString()
+        time: new Date().toISOString(),
       });
     }
   });

@@ -14,27 +14,27 @@ export default [
           paths: [
             {
               name: "@sunset/db",
-              message: "web cannot import server-only @sunset/db"
+              message: "web cannot import server-only @sunset/db",
             },
             {
               name: "@sunset/repositories",
-              message: "web cannot import server-only @sunset/repositories"
+              message: "web cannot import server-only @sunset/repositories",
             },
             {
               name: "@sunset/integrations",
-              message: "web cannot import server-only @sunset/integrations"
+              message: "web cannot import server-only @sunset/integrations",
             },
             {
               name: "@sunset/api",
-              message: "apps should not import other deployable apps"
+              message: "apps should not import other deployable apps",
             },
             {
               name: "@sunset/worker",
-              message: "apps should not import other deployable apps"
-            }
-          ]
-        }
-      ]
-    }
-  }
+              message: "apps should not import other deployable apps",
+            },
+          ],
+        },
+      ],
+    },
+  },
 ];

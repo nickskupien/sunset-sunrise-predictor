@@ -7,7 +7,7 @@ import { pool } from "./config/db.js";
 const env = getEnv();
 
 const app = Fastify({
-  logger: true
+  logger: true,
 });
 
 await registerHealthRoutes(app);

@@ -2,7 +2,7 @@ import { z } from "zod";
 
 const EnvSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
-  DATABASE_URL: z.string().min(1, "DATABASE_URL is required")
+  DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
 });
 
 export type Env = z.infer<typeof EnvSchema>;
@@ -14,4 +14,3 @@ export function getEnv(): Env {
   cachedEnv = EnvSchema.parse(process.env);
   return cachedEnv;
 }
-

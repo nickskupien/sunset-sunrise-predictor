@@ -109,7 +109,7 @@ After `docker compose up --build`, verify:
 
 - Web: http://localhost:3000
   - Should render SSR content with API response and DB health
-- API: 
+- API:
   - http://localhost:3001/health
   - http://localhost:3001/db/health
 - Check that API and worker both connect to Postgres successfully

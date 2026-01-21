@@ -3,10 +3,10 @@ import boundaries from "@sunset/config/eslint/web-boundaries";
 
 const config = [
   {
-    ignores: [".next/**"]
+    ignores: [".next/**"],
   },
   ...next,
-  ...boundaries
+  ...boundaries,
 ];
 
 export default config;

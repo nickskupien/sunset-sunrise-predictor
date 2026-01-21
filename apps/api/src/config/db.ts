@@ -6,4 +6,3 @@ const env = getEnv();
 const { db, pool } = createDb(env.DATABASE_URL);
 
 export { db, pool };
-

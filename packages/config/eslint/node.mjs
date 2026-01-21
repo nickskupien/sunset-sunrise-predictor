@@ -11,5 +11,5 @@ export default [
         ...globals.node,
       },
     },
-  }
+  },
 ];

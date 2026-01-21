@@ -7,9 +7,9 @@ export const locations = pgTable(
     name: text("name").notNull(),
     lat: text("lat").notNull(),
     lon: text("lon").notNull(),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => ({
-    uniqName: uniqueIndex("locations_name_unique").on(t.name)
-  })
+    uniqName: uniqueIndex("locations_name_unique").on(t.name),
+  }),
 );
