@@ -8,3 +8,6 @@ export function createDb(databaseUrl: string) {
   const db = drizzle(pool);
   return { db, pool };
 }
+
+export * from "./schema.js";
+export * from "./queue.js";
