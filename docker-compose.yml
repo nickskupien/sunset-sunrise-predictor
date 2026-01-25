@@ -15,6 +15,46 @@ services:
       timeout: 3s
       retries: 20
 
+  deps:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    working_dir: /app
+    environment:
+      CI: "true"
+      NODE_ENV: development
+    command: ["sh", "-lc", "pnpm install --frozen-lockfile --force"]
+    volumes:
+      - ./:/app
+      - root_node_modules:/app/node_modules
+      - web_node_modules:/app/apps/web/node_modules
+      - api_node_modules:/app/apps/api/node_modules
+      - worker_node_modules:/app/apps/worker/node_modules
+      - db_node_modules:/app/packages/db/node_modules
+      - contracts_node_modules:/app/packages/contracts/node_modules
+      - config_node_modules:/app/packages/config/node_modules
+    restart: "no"
+
+  migrate:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    working_dir: /app
+    command: ["sh", "-lc", "cd /app/packages/db && pnpm db:migrate"]
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgres://sunset:sunset@postgres:5432/sunset
+    depends_on:
+      postgres:
+        condition: service_healthy
+      deps:
+        condition: service_completed_successfully
+    volumes:
+      - ./:/app
+      - root_node_modules:/app/node_modules
+      - db_node_modules:/app/packages/db/node_modules
+    restart: "no"
+
   api:
     build:
       context: .
@@ -27,12 +67,17 @@ services:
     ports:
       - "3001:3001"
     depends_on:
-      postgres:
-        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      deps:
+        condition: service_completed_successfully
     volumes:
       - ./:/app
-      - api_node_modules:/app/apps/api/node_modules
       - root_node_modules:/app/node_modules
+      - api_node_modules:/app/apps/api/node_modules
+      - db_node_modules:/app/packages/db/node_modules
+      - contracts_node_modules:/app/packages/contracts/node_modules
+      - config_node_modules:/app/packages/config/node_modules
 
   worker:
     build:
@@ -43,14 +88,17 @@ services:
       NODE_ENV: development
       DATABASE_URL: postgres://sunset:sunset@postgres:5432/sunset
     depends_on:
-      api:
-        condition: service_started
-      postgres:
-        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      deps:
+        condition: service_completed_successfully
     volumes:
       - ./:/app
-      - worker_node_modules:/app/apps/worker/node_modules
       - root_node_modules:/app/node_modules
+      - worker_node_modules:/app/apps/worker/node_modules
+      - db_node_modules:/app/packages/db/node_modules
+      - contracts_node_modules:/app/packages/contracts/node_modules
+      - config_node_modules:/app/packages/config/node_modules
 
   web:
     build:
@@ -64,15 +112,28 @@ services:
     ports:
       - "3000:3000"
     depends_on:
-      - api
+      api:
+        condition: service_started
+      deps:
+        condition: service_completed_successfully
     volumes:
       - ./:/app
-      - web_node_modules:/app/apps/web/node_modules
       - root_node_modules:/app/node_modules
+      - web_node_modules:/app/apps/web/node_modules
+      - contracts_node_modules:/app/packages/contracts/node_modules
+      - config_node_modules:/app/packages/config/node_modules
 
 volumes:
   pgdata:
+
+  # Shared root node_modules for workspace tooling
   root_node_modules:
+
+  # Per-package node_modules to prevent bind mount wipe
   api_node_modules:
   worker_node_modules:
   web_node_modules:
+
+  db_node_modules:
+  contracts_node_modules:
+  config_node_modules:
