@@ -4,6 +4,7 @@ import {
   serial,
   text,
   integer,
+  doublePrecision,
   jsonb,
   timestamp,
   uniqueIndex,
@@ -92,12 +93,13 @@ export const locations = pgTable(
   "locations",
   {
     id: serial("id").primaryKey(),
-    name: text("name").notNull(),
-    lat: text("lat").notNull(),
-    lon: text("lon").notNull(),
+    key: text("key").notNull(),
+    lat: doublePrecision("lat").notNull(),
+    lon: doublePrecision("lon").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => ({
-    uniqName: uniqueIndex("locations_name_unique").on(t.name),
+    uniqKey: uniqueIndex("locations_key_uq").on(t.key),
   }),
 );

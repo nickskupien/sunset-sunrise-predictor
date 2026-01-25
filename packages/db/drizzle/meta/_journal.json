@@ -15,6 +15,13 @@
       "when": 1769275817428,
       "tag": "0001_lucky_rachel_grey",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1769356511977,
+      "tag": "0002_right_harry_osborn",
+      "breakpoints": true
     }
   ]
 }
