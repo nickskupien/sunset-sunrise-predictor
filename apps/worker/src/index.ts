@@ -30,7 +30,8 @@ async function runOne() {
       throw new Error(`No handler registered for job type "${job.type}"`);
     }
 
-    const result = await handler(pool, job.payload);
+    const result = await handler(db, job.payload);
+    // TODO: store result somewhere else and keep summary light
     await markJobSuccess(db, job, startedAt, JSON.stringify(result));
     console.log(`[worker] job:success id=${job.id} type=${job.type} ms=${Date.now() - startedAt}`);
   } catch (err) {
