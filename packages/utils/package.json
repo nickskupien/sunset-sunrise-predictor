@@ -1,24 +1,23 @@
 {
-  "name": "@sunset/worker",
+  "name": "@sunset/utils",
   "version": "0.0.1",
   "private": true,
   "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
   "scripts": {
-    "dev": "tsx watch src/index.ts",
+    "dev": "echo \"utils: no dev server\"",
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint .",
     "format": "prettier --write ."
   },
-  "dependencies": {
-    "@sunset/db": "workspace:*",
-    "zod": "^4.3.5"
-  },
   "devDependencies": {
     "@sunset/config": "workspace:*",
-    "@sunset/utils": "workspace:*",
-    "tsx": "^4.21.0",
-    "typescript": "^5.9.3",
-    "@types/node": "^20.5.9"
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "zod": "^4.3.5"
   }
 }

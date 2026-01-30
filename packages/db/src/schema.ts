@@ -9,6 +9,9 @@ import {
   timestamp,
   uniqueIndex,
   index,
+  smallint,
+  bigint,
+  date,
 } from "drizzle-orm/pg-core";
 
 // --- Job queue status enum
@@ -38,7 +41,7 @@ export const jobQueue = pgTable(
     runAfter: timestamp("run_after", { withTimezone: true }).notNull().defaultNow(),
 
     attempts: integer("attempts").notNull().default(0),
-    maxAttempts: integer("max_attempts").notNull().default(5),
+    maxAttempts: integer("max_attempts").notNull().default(1),
 
     lockedBy: text("locked_by"),
     lockedAt: timestamp("locked_at", { withTimezone: true }),
@@ -96,10 +99,99 @@ export const locations = pgTable(
     key: text("key").notNull(),
     lat: doublePrecision("lat").notNull(),
     lon: doublePrecision("lon").notNull(),
+    tz: text("tz"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => ({
     uniqKey: uniqueIndex("locations_key_uq").on(t.key),
+  }),
+);
+
+export const forecastPoints = pgTable(
+  "forecast_points",
+  {
+    id: serial("id").primaryKey(),
+    // global dedupe key (snapped point)
+    key: text("key").notNull(),
+    lat: doublePrecision("lat").notNull(),
+    lon: doublePrecision("lon").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    uniqKey: uniqueIndex("forecast_points_key_uq").on(t.key),
+  }),
+);
+
+export const locationForecastPoints = pgTable(
+  "location_forecast_points",
+  {
+    id: serial("id").primaryKey(),
+    locationId: integer("location_id").notNull(),
+    forecastPointId: integer("forecast_point_id").notNull(),
+    gridI: smallint("grid_i").notNull(), // 0..10
+    gridJ: smallint("grid_j").notNull(), // 0..10
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    uniqLocGrid: uniqueIndex("location_forecast_points_loc_grid_uq").on(
+      t.locationId,
+      t.gridI,
+      t.gridJ,
+    ),
+    idxLoc: index("location_forecast_points_location_idx").on(t.locationId),
+    idxPoint: index("location_forecast_points_point_idx").on(t.forecastPointId),
+  }),
+);
+
+export const forecastHourly = pgTable(
+  "forecast_hourly",
+  {
+    id: serial("id").primaryKey(),
+    forecastPointId: integer("forecast_point_id").notNull(),
+
+    // epoch ms UTC
+    timeMs: bigint("time_ms", { mode: "number" }).notNull(),
+
+    // requested fields
+    relativeHumidity: smallint("relative_humidity").notNull(), // %
+    precipitationProbability: smallint("precipitation_probability").notNull(), // %
+    precipitation: doublePrecision("precipitation").notNull(), // mm
+    temperature: doublePrecision("temperature").notNull(), // °C
+    cloudCover: smallint("cloud_cover").notNull(), // %
+    cloudCoverLow: smallint("cloud_cover_low").notNull(), // %
+    cloudCoverMid: smallint("cloud_cover_mid").notNull(), // %
+    cloudCoverHigh: smallint("cloud_cover_high").notNull(), // %
+    visibility: integer("visibility").notNull(), // meters
+
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    uniqPointTime: uniqueIndex("forecast_hourly_point_time_uq").on(t.forecastPointId, t.timeMs),
+    idxPoint: index("forecast_hourly_point_idx").on(t.forecastPointId),
+    idxTime: index("forecast_hourly_time_idx").on(t.timeMs),
+  }),
+);
+
+export const sunEvents = pgTable(
+  "sun_events",
+  {
+    id: serial("id").primaryKey(),
+    locationId: integer("location_id").notNull(),
+
+    // (YYYY-MM-DD)
+    day: date("day", { mode: "string" }).notNull(),
+
+    sunriseMs: bigint("sunrise_ms", { mode: "number" }).notNull(),
+    sunsetMs: bigint("sunset_ms", { mode: "number" }).notNull(),
+
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    uniqLocDay: uniqueIndex("sun_events_loc_day_uq").on(t.locationId, t.day),
+    idxLoc: index("sun_events_location_idx").on(t.locationId),
   }),
 );

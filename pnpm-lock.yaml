@@ -92,6 +92,9 @@ importers:
       '@sunset/config':
         specifier: workspace:*
         version: link:../../packages/config
+      '@sunset/utils':
+        specifier: workspace:*
+        version: link:../../packages/utils
       '@types/node':
         specifier: ^20.5.9
         version: 20.19.30
@@ -160,6 +163,19 @@ importers:
       drizzle-kit:
         specifier: ^0.31.8
         version: 0.31.8
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+
+  packages/utils:
+    dependencies:
+      zod:
+        specifier: ^4.3.5
+        version: 4.3.5
+    devDependencies:
+      '@sunset/config':
+        specifier: workspace:*
+        version: link:../config
       typescript:
         specifier: ^5.9.3
         version: 5.9.3

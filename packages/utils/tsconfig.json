@@ -1,0 +1,10 @@
+{
+  "extends": "@sunset/config/tsconfig/base.json",
+  "compilerOptions": {
+    "declaration": true,
+    "module": "ES2022",
+    "lib": ["ES2022"],
+    "moduleResolution": "Bundler"
+  },
+  "include": ["src/**/*.ts"]
+}

@@ -22,6 +22,27 @@
       "when": 1769356511977,
       "tag": "0002_right_harry_osborn",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1769374465926,
+      "tag": "0003_bent_nocturne",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1769407178356,
+      "tag": "0004_hard_deathbird",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1769567667562,
+      "tag": "0005_rapid_outlaw_kid",
+      "breakpoints": true
     }
   ]
 }
