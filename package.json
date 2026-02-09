@@ -11,10 +11,12 @@
     "typecheck": "pnpm -r typecheck",
     "lint": "pnpm -r lint",
     "format": "prettier --write .",
+    "test": "pnpm -r test",
     "db:generate": "pnpm --filter @sunset/db db:generate",
     "db:migrate": "pnpm --filter @sunset/db db:migrate"
   },
   "devDependencies": {
+    "vitest": "^3.1.1",
     "@typescript-eslint/eslint-plugin": "^8.53.1",
     "@typescript-eslint/parser": "^8.53.1",
     "eslint": "^9.39.2",
