@@ -195,3 +195,42 @@ export const sunEvents = pgTable(
     idxLoc: index("sun_events_location_idx").on(t.locationId),
   }),
 );
+
+export const sunsetSunriseScores = pgTable(
+  "sunset_sunrise_scores",
+  {
+    id: serial("id").primaryKey(),
+    locationId: integer("location_id").notNull(),
+
+    // (YYYY-MM-DD)
+    day: date("day", { mode: "string" }).notNull(),
+
+    // "sunset" | "sunrise"
+    kind: text("kind").notNull(),
+
+    // "burning_sky" | "gradient" | "clear" | "hazy" ...
+    type: text("type").notNull(),
+
+    // 0..100
+    score: smallint("score").notNull(),
+
+    inputs: jsonb("inputs").notNull().default({}),
+
+    // epoch ms UTC
+    computedAtMs: bigint("computed_at_ms", { mode: "number" }).notNull(),
+
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    uniqLocDayKindType: uniqueIndex("sunset_sunrise_scores_loc_day_kind_type_uq").on(
+      t.locationId,
+      t.day,
+      t.kind,
+      t.type,
+    ),
+    idxLoc: index("sunset_sunrise_scores_location_idx").on(t.locationId),
+    idxDay: index("sunset_sunrise_scores_day_idx").on(t.day),
+    idxKind: index("sunset_sunrise_scores_kind_idx").on(t.kind),
+  }),
+);

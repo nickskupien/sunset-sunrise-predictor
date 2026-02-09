@@ -43,6 +43,13 @@
       "when": 1769567667562,
       "tag": "0005_rapid_outlaw_kid",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1770579875439,
+      "tag": "0006_wild_hex",
+      "breakpoints": true
     }
   ]
 }

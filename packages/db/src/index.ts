@@ -13,3 +13,4 @@ export * from "./schema.js";
 export * from "./queue.js";
 export * from "./locations.js";
 export * from "./forecast.js";
+export * from "./scores.js";
