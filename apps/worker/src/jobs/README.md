@@ -12,6 +12,9 @@ curl -s http://localhost:3001/jobs/1 | jq
 ## Get runs for job 1
 curl -s http://localhost:3001/jobs/1/runs | jq
 
+## Compute score
+curl -s "http://localhost:3001/scores/1/2026-02-09/sunset"
+
 ---
 
 # Run Jobs
@@ -25,3 +28,10 @@ curl -X POST http://localhost:3001/jobs \
 curl -X POST http://localhost:3001/jobs \
   -H "content-type: application/json" \
   -d '{"type":"location.upsert","key":"location:test","payload":{"lat":43.25512,"lon":-79.87149}}'
+
+## Job: forecastRefresh
+curl -X POST http://localhost:3001/jobs \
+  -H "content-type: application/json" \
+  -d '{"type":"forecast.refresh","key":"forecast_hourly:location:1","payload":{"locationId":1}}'
+
+## Job: computeScore

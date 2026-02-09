@@ -125,7 +125,6 @@ describe("registerScoresRoutes", () => {
         kind: "sunset",
       },
       runAfterMs: expect.any(Number),
-      maxAttempts: 10,
     });
   });
 });

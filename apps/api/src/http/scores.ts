@@ -40,7 +40,6 @@ export async function registerScoresRoutes(app: FastifyInstance) {
         kind: params.kind,
       },
       runAfterMs: Date.now(),
-      maxAttempts: 10,
     });
 
     return reply.code(202).send({ ok: true, status: "pending", jobId: job.id, job });

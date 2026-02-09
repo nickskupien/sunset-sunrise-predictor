@@ -126,3 +126,134 @@ export async function upsertSunEvents(db: Db["db"], rows: SunEventRow[]) {
       },
     });
 }
+
+export type ScoreKind = "sunset" | "sunrise";
+
+/**
+ * Return the sunriseMs/sunsetMs (ms UTC) for a location-local day.
+ */
+export async function getSunEventMs(
+  db: Db["db"],
+  params: { locationId: number; day: string; kind: ScoreKind },
+): Promise<number> {
+  const rows = await db
+    .select({
+      sunriseMs: sunEvents.sunriseMs,
+      sunsetMs: sunEvents.sunsetMs,
+    })
+    .from(sunEvents)
+    .where(sql`${sunEvents.locationId} = ${params.locationId} AND ${sunEvents.day} = ${params.day}`)
+    .limit(1);
+
+  const r = rows[0];
+  if (!r)
+    throw new Error(`sun_events missing for locationId=${params.locationId} day=${params.day}`);
+
+  return params.kind === "sunset" ? r.sunsetMs : r.sunriseMs;
+}
+
+export type ForecastGridCell = {
+  gridI: number;
+  gridJ: number;
+  forecastPointId: number;
+};
+
+/**
+ * Return all grid cells for the location (grid_i, grid_j, point_id).
+ */
+export async function getLocationForecastGrid(
+  db: Db["db"],
+  locationId: number,
+): Promise<ForecastGridCell[]> {
+  const rows = await db
+    .select({
+      gridI: locationForecastPoints.gridI,
+      gridJ: locationForecastPoints.gridJ,
+      forecastPointId: locationForecastPoints.forecastPointId,
+    })
+    .from(locationForecastPoints)
+    .where(sql`${locationForecastPoints.locationId} = ${locationId}`);
+
+  if (rows.length === 0) {
+    throw new Error(
+      `location_forecast_points missing for locationId=${locationId} (run forecast.refresh)`,
+    );
+  }
+
+  return rows as ForecastGridCell[];
+}
+
+export type ForecastNearestHourlyRow = {
+  forecastPointId: number;
+  timeMs: number;
+
+  relativeHumidity: number;
+  precipitationProbability: number;
+  precipitation: number;
+  temperature: number;
+  cloudCover: number;
+  cloudCoverLow: number;
+  cloudCoverMid: number;
+  cloudCoverHigh: number;
+  visibility: number;
+};
+
+/**
+ * For each forecastPointId, fetch the hourly row closest to targetMs within +/- windowHours.
+ * Uses DISTINCT ON to pick the nearest row per point in a single query.
+ */
+export async function getNearestHourlyForPoints(
+  db: Db["db"],
+  params: { pointIds: number[]; targetMs: number; windowHours?: number },
+): Promise<Map<number, ForecastNearestHourlyRow>> {
+  if (params.pointIds.length === 0) return new Map<number, ForecastNearestHourlyRow>();
+
+  const windowHours = params.windowHours ?? 3;
+  const windowMs = windowHours * 60 * 60 * 1000;
+  const fromMs = params.targetMs - windowMs;
+  const toMs = params.targetMs + windowMs;
+
+  const result = await db.execute(sql`
+    SELECT DISTINCT ON (fh.forecast_point_id)
+      fh.forecast_point_id             AS "forecastPointId",
+      fh.time_ms                       AS "timeMs",
+      fh.relative_humidity             AS "relativeHumidity",
+      fh.precipitation_probability     AS "precipitationProbability",
+      fh.precipitation                 AS "precipitation",
+      fh.temperature                   AS "temperature",
+      fh.cloud_cover                   AS "cloudCover",
+      fh.cloud_cover_low               AS "cloudCoverLow",
+      fh.cloud_cover_mid               AS "cloudCoverMid",
+      fh.cloud_cover_high              AS "cloudCoverHigh",
+      fh.visibility                    AS "visibility"
+    FROM ${forecastHourly} fh
+    WHERE fh.forecast_point_id IN (${sql.join(params.pointIds, sql`, `)})
+      AND fh.time_ms BETWEEN ${fromMs} AND ${toMs}
+    ORDER BY fh.forecast_point_id, ABS(fh.time_ms - ${params.targetMs}) ASC;
+  `);
+
+  // @ts-expect-error node-postgres rows
+  const rows = (result.rows ?? []) as any[];
+
+  const byPoint = new Map<number, ForecastNearestHourlyRow>();
+
+  for (const r of rows) {
+    const pointId = Number(r.forecastPointId);
+    byPoint.set(pointId, {
+      forecastPointId: pointId,
+      timeMs: Number(r.timeMs),
+
+      relativeHumidity: Number(r.relativeHumidity),
+      precipitationProbability: Number(r.precipitationProbability),
+      precipitation: Number(r.precipitation),
+      temperature: Number(r.temperature),
+      cloudCover: Number(r.cloudCover),
+      cloudCoverLow: Number(r.cloudCoverLow),
+      cloudCoverMid: Number(r.cloudCoverMid),
+      cloudCoverHigh: Number(r.cloudCoverHigh),
+      visibility: Number(r.visibility),
+    });
+  }
+
+  return byPoint;
+}
