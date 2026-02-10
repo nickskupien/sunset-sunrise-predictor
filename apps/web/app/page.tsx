@@ -1,5 +1,6 @@
 import { DbHealthSchema, HealthSchema } from "@sunset/contracts";
-import { getEnv } from "../src/config/env";
+import { Button } from "@/components/ui/button";
+import { getEnv } from "@/config/env";
 
 async function fetchJson(url: string) {
   const res = await fetch(url, { cache: "no-store" });
@@ -18,17 +19,32 @@ export default async function Home() {
   const db = DbHealthSchema.parse(dbRaw);
 
   return (
-    <main style={{ fontFamily: "system-ui, sans-serif", padding: 24, maxWidth: 800 }}>
-      <h1>Sunset Predictor</h1>
-      <p>SSR smoke test page. If you see this, SSR is working.</p>
+    <main className="mx-auto max-w-4xl p-6">
+      <h1 className="mb-2 text-3xl font-semibold">Sunset Predictor</h1>
+      <p className="mb-6 text-muted-foreground">
+        SSR smoke test page. If you see this, SSR is working.
+      </p>
 
-      <h2>API Health</h2>
-      <pre>{JSON.stringify(health, null, 2)}</pre>
+      <div className="mb-8 flex items-center gap-3">
+        <Button>Primary action</Button>
+        <Button variant="outline">Secondary action</Button>
+      </div>
 
-      <h2>DB Health (API → Postgres)</h2>
-      <pre>{JSON.stringify(db, null, 2)}</pre>
+      <section className="mb-6">
+        <h2 className="mb-2 text-xl font-medium">API Health</h2>
+        <pre className="overflow-x-auto rounded-lg border bg-muted p-4 text-sm">
+          {JSON.stringify(health, null, 2)}
+        </pre>
+      </section>
 
-      <p style={{ marginTop: 24, opacity: 0.7 }}>
+      <section className="mb-6">
+        <h2 className="mb-2 text-xl font-medium">DB Health (API → Postgres)</h2>
+        <pre className="overflow-x-auto rounded-lg border bg-muted p-4 text-sm">
+          {JSON.stringify(db, null, 2)}
+        </pre>
+      </section>
+
+      <p className="text-sm text-muted-foreground">
         Next: wire up worker ingestion + scoring, then display real scores here.
       </p>
     </main>
