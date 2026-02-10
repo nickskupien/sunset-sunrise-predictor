@@ -94,6 +94,19 @@ function getSunEventMsFromCalc(params: {
   return ms;
 }
 
+function getSunDirection(params: { lat: number; lon: number; timeMs: number }) {
+  const pos = SunCalc.getPosition(new Date(params.timeMs), params.lat, params.lon) as {
+    azimuth?: number;
+  };
+  const az = pos?.azimuth;
+  if (!Number.isFinite(az)) return null;
+
+  // SunCalc azimuth: angle from south, positive towards west
+  const east = -Math.sin(az as number);
+  const north = -Math.cos(az as number);
+  return { east, north };
+}
+
 // ---------- domain metrics ----------
 type JoinedCell = { i: number; j: number; row: any };
 
@@ -107,6 +120,7 @@ function computeMetrics(
   kind: "sunset" | "sunrise",
   grid: { gridI: number; gridJ: number; forecastPointId: number }[],
   hourlyByPoint: Map<number, any>,
+  sunDir: { east: number; north: number } | null,
 ) {
   const joined: JoinedCell[] = [];
   for (const c of grid) {
@@ -126,8 +140,18 @@ function computeMetrics(
   const centerJ = Math.round(maxJ / 2);
 
   const overhead = joined.filter((c) => c.j >= centerJ - 1 && c.j <= centerJ + 1);
-  const sunwardHalf = (cells: JoinedCell[]) =>
-    cells.filter((c) => (kind === "sunset" ? c.i < centerI : c.i > centerI));
+  const sunwardHalf = (cells: JoinedCell[]) => {
+    if (!sunDir) {
+      return cells.filter((c) => (kind === "sunset" ? c.i < centerI : c.i > centerI));
+    }
+
+    return cells.filter((c) => {
+      const dx = c.i - centerI;
+      const dy = c.j - centerJ;
+      const dot = dx * sunDir.east + dy * sunDir.north;
+      return dot > 0;
+    });
+  };
 
   const sunward = sunwardHalf(overhead);
   const sunwardFallback = sunward.length ? sunward : sunwardHalf(joined);
@@ -244,6 +268,7 @@ export async function scoreCompute(db: Db["db"], payloadRaw: unknown) {
     timeZone: location.tz,
     kind: payload.kind,
   });
+  const sunDir = getSunDirection({ lat: location.lat, lon: location.lon, timeMs: targetMs });
 
   const grid = await getLocationForecastGrid(db, payload.locationId);
   const pointIds = Array.from(new Set(grid.map((c) => c.forecastPointId)));
@@ -254,7 +279,7 @@ export async function scoreCompute(db: Db["db"], payloadRaw: unknown) {
     windowHours: 3,
   });
 
-  const metrics = computeMetrics(payload.kind, grid, hourlyByPoint);
+  const metrics = computeMetrics(payload.kind, grid, hourlyByPoint, sunDir);
   const scored = scoreTypes(metrics);
   const computedAtMs = Date.now();
 

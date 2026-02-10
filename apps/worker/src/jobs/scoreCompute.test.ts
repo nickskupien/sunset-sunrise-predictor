@@ -12,6 +12,7 @@ vi.mock("@sunset/db", () => ({
 vi.mock("suncalc", () => ({
   default: {
     getTimes: vi.fn(),
+    getPosition: vi.fn(),
   },
 }));
 
@@ -93,6 +94,9 @@ describe("scoreCompute", () => {
     vi.mocked(SunCalc.getTimes).mockReturnValue({
       sunrise: new Date(targetMs - 12 * 60 * 60 * 1000),
       sunset: new Date(targetMs),
+    } as any);
+    vi.mocked(SunCalc.getPosition).mockReturnValue({
+      azimuth: Math.PI / 2,
     } as any);
 
     const gridSize = 11;
@@ -200,6 +204,9 @@ describe("scoreCompute", () => {
     vi.mocked(SunCalc.getTimes).mockReturnValue({
       sunrise: new Date(targetMs),
       sunset: new Date(targetMs + 12 * 60 * 60 * 1000),
+    } as any);
+    vi.mocked(SunCalc.getPosition).mockReturnValue({
+      azimuth: -Math.PI / 2,
     } as any);
 
     const gridSize = 11;
