@@ -1,5 +1,6 @@
 import type { Db } from "@sunset/db";
 import {
+  enqueueJob,
   upsertForecastPoints,
   replaceLocationGridLinks,
   upsertForecastHourly,
@@ -30,6 +31,14 @@ const PayloadSchema = z.object({
 
   // Optional: use a specific Open-Meteo endpoint if you want later
   // baseUrl: z.string().url().optional(),
+
+  // Optional: enqueue score.schedule after refresh completes
+  schedule: z
+    .object({
+      forecastDays: z.number().int().min(1).max(16),
+      kinds: z.array(z.enum(["sunset", "sunrise"])),
+    })
+    .optional(),
 });
 
 type Payload = z.infer<typeof PayloadSchema>;
@@ -276,6 +285,19 @@ export async function forecastRefresh(db: Db["db"], payloadRaw: unknown) {
   }
 
   await upsertSunEvents(db, sunRows);
+
+  if (payload.schedule) {
+    await enqueueJob(db, {
+      type: "score.schedule",
+      key: `score_schedule:${payload.locationId}:${payload.schedule.forecastDays}:${payload.schedule.kinds.join(",")}`,
+      payload: {
+        locationId: payload.locationId,
+        forecastDays: payload.schedule.forecastDays,
+        kinds: payload.schedule.kinds,
+      },
+      runAfterMs: Date.now(),
+    });
+  }
 
   return {
     locationId: payload.locationId,
