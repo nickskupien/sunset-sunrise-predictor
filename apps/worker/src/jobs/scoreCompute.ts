@@ -1,9 +1,10 @@
 import type { Db } from "@sunset/db";
 import { z } from "zod";
+import SunCalc from "suncalc";
 import {
   listScoresForDay,
   upsertScores,
-  getSunEventMs,
+  getLocationById,
   getLocationForecastGrid,
   getNearestHourlyForPoints,
 } from "@sunset/db";
@@ -36,6 +37,61 @@ function std(nums: number[]) {
 function sweetSpot(pct: number, center: number, halfWidth: number) {
   const d = Math.abs(pct - center);
   return clamp01(1 - d / halfWidth);
+}
+
+function timeZoneOffsetMs(date: Date, timeZone: string) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    hour12: false,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  }).formatToParts(date);
+
+  const map = Object.fromEntries(parts.map((p) => [p.type, p.value]));
+  const localTs = Date.UTC(
+    Number(map.year),
+    Number(map.month) - 1,
+    Number(map.day),
+    Number(map.hour),
+    Number(map.minute),
+    Number(map.second),
+  );
+
+  return localTs - date.getTime();
+}
+
+function dateForLocalNoon(day: string, timeZone: string) {
+  const [y, m, d] = day.split("-").map((v) => Number(v));
+  if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(d)) {
+    throw new Error(`invalid day: ${day}`);
+  }
+
+  const utcNoon = new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
+  const offset = timeZoneOffsetMs(utcNoon, timeZone);
+  return new Date(utcNoon.getTime() - offset);
+}
+
+function getSunEventMsFromCalc(params: {
+  lat: number;
+  lon: number;
+  day: string;
+  timeZone: string;
+  kind: "sunset" | "sunrise";
+}) {
+  const date = dateForLocalNoon(params.day, params.timeZone);
+  const times = SunCalc.getTimes(date, params.lat, params.lon);
+  const event = params.kind === "sunset" ? times.sunset : times.sunrise;
+  const ms = event?.getTime?.();
+  if (!Number.isFinite(ms)) {
+    throw new Error(
+      `failed to compute ${params.kind} for day=${params.day} lat=${params.lat} lon=${params.lon}`,
+    );
+  }
+  return ms;
 }
 
 // ---------- domain metrics ----------
@@ -177,9 +233,15 @@ export async function scoreCompute(db: Db["db"], payloadRaw: unknown) {
   const existing = await listScoresForDay(db, payload);
   if (existing.length > 0) return existing;
 
-  const targetMs = await getSunEventMs(db, {
-    locationId: payload.locationId,
+  const location = await getLocationById(db, payload.locationId);
+  if (!location) throw new Error(`location not found id=${payload.locationId}`);
+  if (!location.tz) throw new Error(`timezone missing for locationId=${payload.locationId}`);
+
+  const targetMs = getSunEventMsFromCalc({
+    lat: location.lat,
+    lon: location.lon,
     day: payload.day,
+    timeZone: location.tz,
     kind: payload.kind,
   });
 

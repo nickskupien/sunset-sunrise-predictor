@@ -175,27 +175,6 @@ export const forecastHourly = pgTable(
   }),
 );
 
-export const sunEvents = pgTable(
-  "sun_events",
-  {
-    id: serial("id").primaryKey(),
-    locationId: integer("location_id").notNull(),
-
-    // (YYYY-MM-DD)
-    day: date("day", { mode: "string" }).notNull(),
-
-    sunriseMs: bigint("sunrise_ms", { mode: "number" }).notNull(),
-    sunsetMs: bigint("sunset_ms", { mode: "number" }).notNull(),
-
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
-  },
-  (t) => ({
-    uniqLocDay: uniqueIndex("sun_events_loc_day_uq").on(t.locationId, t.day),
-    idxLoc: index("sun_events_location_idx").on(t.locationId),
-  }),
-);
-
 export const sunsetSunriseScores = pgTable(
   "sunset_sunrise_scores",
   {

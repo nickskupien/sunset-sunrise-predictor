@@ -4,11 +4,9 @@ import {
   upsertForecastPoints,
   replaceLocationGridLinks,
   upsertForecastHourly,
-  upsertSunEvents,
   getLocationById,
   setLocationTimezone,
 } from "@sunset/db";
-import { localIsoToUtcMs } from "@sunset/utils";
 import { z } from "zod";
 
 /**
@@ -240,51 +238,12 @@ export async function forecastRefresh(db: Db["db"], payloadRaw: unknown) {
 
   await upsertForecastHourly(db, hourlyRows);
 
-  // 4) Fetch sunrise/sunset for the CENTER point and store as ms UTC
-  // daily sunrise/sunset needs timezone; using timezone=auto keeps it correct. (Open-Meteo docs)
-  const urlSun = buildUrl(baseUrl, {
-    latitude: String(loc.lat),
-    longitude: String(loc.lon),
-    daily: "sunrise,sunset",
-    forecast_days: String(payload.forecastDays),
-    timezone: "auto",
-  });
-
-  const resSun = await fetch(urlSun);
-  if (!resSun.ok) throw new Error(`open-meteo sun error ${resSun.status}: ${await resSun.text()}`);
-  const sunJson: any = await resSun.json();
-
-  const tz: string = sunJson?.timezone;
-  if (tz.length > 0 && tz !== loc.tz) {
-    await setLocationTimezone(db, payload.locationId, tz);
+  // 4) Update location timezone from the center grid response
+  const centerIdx = Math.floor(responses.length / 2);
+  const centerTz: string | undefined = responses?.[centerIdx]?.timezone;
+  if (centerTz && centerTz.length > 0 && centerTz !== loc.tz) {
+    await setLocationTimezone(db, payload.locationId, centerTz);
   }
-
-  const days: any[] = sunJson?.daily?.time ?? []; // "YYYY-MM-DD"
-  const sunriseLocalIso: any[] = sunJson?.daily?.sunrise ?? []; // ISO with offset
-  const sunsetLocalIso: any[] = sunJson?.daily?.sunset ?? []; // ISO with offset
-  const utcOffsetSeconds = sunJson?.utc_offset_seconds;
-
-  const dCount = Math.min(days.length, sunriseLocalIso.length, sunsetLocalIso.length);
-
-  const sunRows: Parameters<typeof upsertSunEvents>[1] = [];
-
-  for (let d = 0; d < dCount; d++) {
-    const sunriseMs = localIsoToUtcMs(sunriseLocalIso[d], utcOffsetSeconds);
-    const sunsetMs = localIsoToUtcMs(sunsetLocalIso[d], utcOffsetSeconds);
-
-    if (!Number.isFinite(sunriseMs) || !Number.isFinite(sunsetMs)) {
-      continue; // skip malformed rows
-    }
-
-    sunRows.push({
-      locationId: payload.locationId,
-      day: String(days[d]), // YYYY-MM-DD -> fits Postgres date(mode: "string")
-      sunriseMs,
-      sunsetMs,
-    });
-  }
-
-  await upsertSunEvents(db, sunRows);
 
   if (payload.schedule) {
     await enqueueJob(db, {
@@ -306,7 +265,6 @@ export async function forecastRefresh(db: Db["db"], payloadRaw: unknown) {
     uniquePoints: uniquePoints.length,
     forecastDays: payload.forecastDays,
     hourlyRows: hourlyRows.length,
-    sunEvents: sunRows.length,
     snapKm: payload.snapKm,
   };
 }

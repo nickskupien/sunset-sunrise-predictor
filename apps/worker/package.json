@@ -13,11 +13,13 @@
   },
   "dependencies": {
     "@sunset/db": "workspace:*",
+    "suncalc": "^1.9.0",
     "zod": "^4.3.5"
   },
   "devDependencies": {
     "@sunset/config": "workspace:*",
     "@sunset/utils": "workspace:*",
+    "@types/suncalc": "^1.9.0",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
     "@types/node": "^20.5.9"

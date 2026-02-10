@@ -1,6 +1,6 @@
 import { eq, sql } from "drizzle-orm";
 import type { Db } from "./index.js";
-import { forecastPoints, forecastHourly, locationForecastPoints, sunEvents } from "./schema.js";
+import { forecastPoints, forecastHourly, locationForecastPoints } from "./schema.js";
 
 export type ForecastPointInput = {
   key: string;
@@ -102,54 +102,6 @@ export async function upsertForecastHourly(db: Db["db"], rows: ForecastHourlyRow
         },
       });
   }
-}
-
-export type SunEventRow = {
-  locationId: number;
-  day: string; // YYYY-MM-DD
-  sunriseMs: number; // epoch ms UTC
-  sunsetMs: number; // epoch ms UTC
-};
-
-export async function upsertSunEvents(db: Db["db"], rows: SunEventRow[]) {
-  if (rows.length === 0) return;
-
-  await db
-    .insert(sunEvents)
-    .values(rows.map((r) => ({ ...r, updatedAt: new Date() })))
-    .onConflictDoUpdate({
-      target: [sunEvents.locationId, sunEvents.day],
-      set: {
-        sunriseMs: sql`excluded.sunrise_ms`,
-        sunsetMs: sql`excluded.sunset_ms`,
-        updatedAt: new Date(),
-      },
-    });
-}
-
-export type ScoreKind = "sunset" | "sunrise";
-
-/**
- * Return the sunriseMs/sunsetMs (ms UTC) for a location-local day.
- */
-export async function getSunEventMs(
-  db: Db["db"],
-  params: { locationId: number; day: string; kind: ScoreKind },
-): Promise<number> {
-  const rows = await db
-    .select({
-      sunriseMs: sunEvents.sunriseMs,
-      sunsetMs: sunEvents.sunsetMs,
-    })
-    .from(sunEvents)
-    .where(sql`${sunEvents.locationId} = ${params.locationId} AND ${sunEvents.day} = ${params.day}`)
-    .limit(1);
-
-  const r = rows[0];
-  if (!r)
-    throw new Error(`sun_events missing for locationId=${params.locationId} day=${params.day}`);
-
-  return params.kind === "sunset" ? r.sunsetMs : r.sunriseMs;
 }
 
 export type ForecastGridCell = {
