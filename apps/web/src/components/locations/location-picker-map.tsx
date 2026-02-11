@@ -49,7 +49,7 @@ function MapViewUpdater({ lat, lon, zoom }: { lat: number; lon: number; zoom: nu
 }
 
 function toFixedCoord(value: number) {
-  return value.toFixed(5);
+  return value.toFixed(3);
 }
 
 function normalizeName(value: string) {
@@ -114,12 +114,10 @@ export function LocationPickerMap() {
     if (!normalizedInput) return null;
 
     return (
-      existingLocations.find(
-        (item) => {
-          const name = getLocationName(item);
-          return name ? normalizeName(name) === normalizedInput : false;
-        },
-      ) ?? null
+      existingLocations.find((item) => {
+        const name = getLocationName(item);
+        return name ? normalizeName(name) === normalizedInput : false;
+      }) ?? null
     );
   }, [existingLocations, locationNameInput]);
 
@@ -285,7 +283,7 @@ export function LocationPickerMap() {
               selectLocation(value, lon ?? DEFAULT_CENTER.lon);
             }}
             className="h-9 w-full rounded-md border bg-background px-3 py-1 text-sm shadow-xs outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
-            placeholder="e.g. 34.05223"
+            placeholder="e.g. 34.052"
           />
         </label>
 
@@ -306,7 +304,7 @@ export function LocationPickerMap() {
               selectLocation(lat ?? DEFAULT_CENTER.lat, value);
             }}
             className="h-9 w-full rounded-md border bg-background px-3 py-1 text-sm shadow-xs outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
-            placeholder="e.g. -118.24368"
+            placeholder="e.g. -118.243"
           />
         </label>
       </div>
@@ -324,7 +322,9 @@ export function LocationPickerMap() {
             }}
             className="h-9 w-full rounded-md border bg-background px-3 py-1 text-sm shadow-xs outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
             placeholder={
-              namedLocations.length > 0 ? `e.g. ${getLocationName(namedLocations[0])}` : "Enter location name"
+              namedLocations.length > 0
+                ? `e.g. ${getLocationName(namedLocations[0])}`
+                : "Enter location name"
             }
           />
           <datalist id="existing-location-names">

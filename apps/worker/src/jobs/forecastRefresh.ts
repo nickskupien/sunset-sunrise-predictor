@@ -11,8 +11,8 @@ import { z } from "zod";
 
 /**
  * Payload is intentionally small and defaults match:
- * - 40km x 40km square (halfSizeKm=20)
- * - 4km spacing => 11x11 grid
+ * - 80km x 80km square (halfSizeKm=40)
+ * - 4km spacing => 21x21 grid
  * - 1km global snapping for dedupe
  * - forecastDays default 7
  */
@@ -21,7 +21,7 @@ const PayloadSchema = z.object({
 
   forecastDays: z.number().int().min(1).max(16).default(7),
 
-  halfSizeKm: z.number().positive().default(20),
+  halfSizeKm: z.number().positive().default(40),
   stepKm: z.number().positive().default(4),
 
   // Global dedupe snapping in km (1km is a good default)
@@ -79,12 +79,21 @@ function buildOffsetsMeters(halfSizeKm: number, stepKm: number) {
   const halfM = halfSizeKm * 1000;
   const stepM = stepKm * 1000;
 
-  // inclusive range: -half .. +half (so 20km and 4km => 11 points)
+  // inclusive range: -half .. +half (so 40km and 4km => 21 points)
   const offsets: number[] = [];
   for (let m = -halfM; m <= halfM + 1e-6; m += stepM) {
     offsets.push(Math.round(m));
   }
   return offsets;
+}
+
+function chunk<T>(values: T[], size: number) {
+  if (size <= 0) throw new Error(`invalid chunk size: ${size}`);
+  const out: T[][] = [];
+  for (let i = 0; i < values.length; i += size) {
+    out.push(values.slice(i, i + size));
+  }
+  return out;
 }
 
 function buildUrl(base: string, params: Record<string, string>) {
@@ -172,76 +181,89 @@ export async function forecastRefresh(db: Db["db"], payloadRaw: unknown) {
     "cloud_cover_high",
     "visibility",
   ].join(",");
-
-  const urlGrid = buildUrl(baseUrl, {
-    latitude: uniquePoints.map((p) => p.lat.toFixed(6)).join(","),
-    longitude: uniquePoints.map((p) => p.lon.toFixed(6)).join(","),
-    hourly,
-    forecast_days: String(payload.forecastDays),
-    timezone: "auto",
-    timeformat: "unixtime",
-  });
+  const targetRequestCount = 2;
+  const pointsPerRequest = Math.max(1, Math.ceil(uniquePoints.length / targetRequestCount));
+  const coordinatePrecision = 3;
 
   if (typeof fetch !== "function") {
     throw new Error("global fetch() is not available (Node >= 18 required)");
   }
 
-  const resGrid = await fetch(urlGrid);
-  if (!resGrid.ok)
-    throw new Error(`open-meteo grid error ${resGrid.status}: ${await resGrid.text()}`);
-  const gridJson = await resGrid.json();
-  const responses = normalizeOpenMeteoResponses(gridJson);
-
-  if (responses.length !== uniquePoints.length) {
-    throw new Error(
-      `open-meteo response mismatch: got ${responses.length}, expected ${uniquePoints.length}`,
-    );
-  }
-
   const hourlyRows: Parameters<typeof upsertForecastHourly>[1] = [];
+  const centerPointGlobalIndex = Math.floor(uniquePoints.length / 2);
+  let centerTz: string | undefined;
+  let processedCount = 0;
 
-  for (let idx = 0; idx < responses.length; idx++) {
-    const r = responses[idx];
-    const pointId = idByKey.get(uniquePoints[idx].key)!;
+  for (const pointsChunk of chunk(uniquePoints, pointsPerRequest)) {
+    const urlGrid = buildUrl(baseUrl, {
+      latitude: pointsChunk.map((p) => p.lat.toFixed(coordinatePrecision)).join(","),
+      longitude: pointsChunk.map((p) => p.lon.toFixed(coordinatePrecision)).join(","),
+      hourly,
+      forecast_days: String(payload.forecastDays),
+      timezone: "auto",
+      timeformat: "unixtime",
+    });
 
-    const timesSec: any[] = r?.hourly?.time ?? [];
-    const rh: any[] = r?.hourly?.relative_humidity_2m ?? [];
-    const pp: any[] = r?.hourly?.precipitation_probability ?? [];
-    const pr: any[] = r?.hourly?.precipitation ?? [];
-    const temp: any[] = r?.hourly?.temperature_2m ?? [];
-    const cc: any[] = r?.hourly?.cloud_cover ?? [];
-    const ccl: any[] = r?.hourly?.cloud_cover_low ?? [];
-    const ccm: any[] = r?.hourly?.cloud_cover_mid ?? [];
-    const cch: any[] = r?.hourly?.cloud_cover_high ?? [];
-    const vis: any[] = r?.hourly?.visibility ?? [];
+    const resGrid = await fetch(urlGrid);
+    if (!resGrid.ok)
+      throw new Error(`open-meteo grid error ${resGrid.status}: ${await resGrid.text()}`);
+    const gridJson = await resGrid.json();
+    const responses = normalizeOpenMeteoResponses(gridJson);
 
-    const n = timesSec.length;
-
-    for (let t = 0; t < n; t++) {
-      hourlyRows.push({
-        forecastPointId: pointId,
-        timeMs: Math.trunc(num(timesSec[t]) * 1000),
-
-        relativeHumidity: Math.trunc(num(rh[t])),
-        precipitationProbability: Math.trunc(num(pp[t])),
-        precipitation: num(pr[t]),
-        temperature: num(temp[t]),
-
-        cloudCover: Math.trunc(num(cc[t])),
-        cloudCoverLow: Math.trunc(num(ccl[t])),
-        cloudCoverMid: Math.trunc(num(ccm[t])),
-        cloudCoverHigh: Math.trunc(num(cch[t])),
-
-        visibility: Math.trunc(num(vis[t])),
-      });
+    if (responses.length !== pointsChunk.length) {
+      throw new Error(
+        `open-meteo response mismatch: got ${responses.length}, expected ${pointsChunk.length}`,
+      );
     }
+
+    for (let idx = 0; idx < responses.length; idx++) {
+      const r = responses[idx];
+      const point = pointsChunk[idx];
+      const pointId = idByKey.get(point.key)!;
+      const globalIndex = processedCount + idx;
+      if (globalIndex === centerPointGlobalIndex && typeof r?.timezone === "string") {
+        centerTz = r.timezone;
+      }
+
+      const timesSec: any[] = r?.hourly?.time ?? [];
+      const rh: any[] = r?.hourly?.relative_humidity_2m ?? [];
+      const pp: any[] = r?.hourly?.precipitation_probability ?? [];
+      const pr: any[] = r?.hourly?.precipitation ?? [];
+      const temp: any[] = r?.hourly?.temperature_2m ?? [];
+      const cc: any[] = r?.hourly?.cloud_cover ?? [];
+      const ccl: any[] = r?.hourly?.cloud_cover_low ?? [];
+      const ccm: any[] = r?.hourly?.cloud_cover_mid ?? [];
+      const cch: any[] = r?.hourly?.cloud_cover_high ?? [];
+      const vis: any[] = r?.hourly?.visibility ?? [];
+
+      const n = timesSec.length;
+
+      for (let t = 0; t < n; t++) {
+        hourlyRows.push({
+          forecastPointId: pointId,
+          timeMs: Math.trunc(num(timesSec[t]) * 1000),
+
+          relativeHumidity: Math.trunc(num(rh[t])),
+          precipitationProbability: Math.trunc(num(pp[t])),
+          precipitation: num(pr[t]),
+          temperature: num(temp[t]),
+
+          cloudCover: Math.trunc(num(cc[t])),
+          cloudCoverLow: Math.trunc(num(ccl[t])),
+          cloudCoverMid: Math.trunc(num(ccm[t])),
+          cloudCoverHigh: Math.trunc(num(cch[t])),
+
+          visibility: Math.trunc(num(vis[t])),
+        });
+      }
+    }
+
+    processedCount += pointsChunk.length;
   }
 
   await upsertForecastHourly(db, hourlyRows);
 
   // 4) Update location timezone from the center grid response
-  const centerIdx = Math.floor(responses.length / 2);
-  const centerTz: string | undefined = responses?.[centerIdx]?.timezone;
   if (centerTz && centerTz.length > 0 && centerTz !== loc.tz) {
     await setLocationTimezone(db, payload.locationId, centerTz);
   }
@@ -261,8 +283,8 @@ export async function forecastRefresh(db: Db["db"], payloadRaw: unknown) {
 
   return {
     locationId: payload.locationId,
-    gridSize: offsetsM.length, // should be 11
-    gridCells: offsetsM.length * offsetsM.length, // should be 121
+    gridSize: offsetsM.length, // should be 21
+    gridCells: offsetsM.length * offsetsM.length, // should be 441
     uniquePoints: uniquePoints.length,
     forecastDays: payload.forecastDays,
     hourlyRows: hourlyRows.length,
