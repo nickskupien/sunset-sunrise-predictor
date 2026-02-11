@@ -4,6 +4,15 @@ import "leaflet/dist/leaflet.css";
 import { useEffect, useMemo, useState } from "react";
 import { MapContainer, TileLayer, CircleMarker, Popup, useMap, useMapEvents } from "react-leaflet";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 type SaveState =
   | { status: "idle" }
@@ -25,6 +34,7 @@ const MIN_LAT = -90;
 const MAX_LAT = 90;
 const MIN_LON = -180;
 const MAX_LON = 180;
+const CUSTOM_LOCATION_NAME_VALUE = "__custom_location_name__";
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
@@ -52,10 +62,6 @@ function toFixedCoord(value: number) {
   return value.toFixed(3);
 }
 
-function normalizeName(value: string) {
-  return value.trim().toLowerCase();
-}
-
 function getLocationName(location: ExistingLocation) {
   const name = location.name?.trim();
   return name && name.length > 0 ? name : null;
@@ -64,7 +70,10 @@ function getLocationName(location: ExistingLocation) {
 export function LocationPickerMap() {
   const [lat, setLat] = useState<number | null>(null);
   const [lon, setLon] = useState<number | null>(null);
-  const [locationNameInput, setLocationNameInput] = useState("");
+  const [locationNameSelection, setLocationNameSelection] = useState<string>(
+    CUSTOM_LOCATION_NAME_VALUE,
+  );
+  const [customLocationNameInput, setCustomLocationNameInput] = useState("");
   const [existingLocations, setExistingLocations] = useState<ExistingLocation[]>([]);
   const [saveState, setSaveState] = useState<SaveState>({ status: "idle" });
 
@@ -109,26 +118,22 @@ export function LocationPickerMap() {
     return { lat, lon };
   }, [lat, lon]);
 
-  const selectedExistingLocation = useMemo(() => {
-    const normalizedInput = normalizeName(locationNameInput);
-    if (!normalizedInput) return null;
-
-    return (
-      existingLocations.find((item) => {
-        const name = getLocationName(item);
-        return name ? normalizeName(name) === normalizedInput : false;
-      }) ?? null
-    );
-  }, [existingLocations, locationNameInput]);
-
   const namedLocations = useMemo(
     () => existingLocations.filter((item) => getLocationName(item) !== null),
     [existingLocations],
   );
 
+  const selectedExistingLocation = useMemo(() => {
+    const selectedId = Number(locationNameSelection);
+    if (!Number.isSafeInteger(selectedId) || selectedId <= 0) return null;
+    return namedLocations.find((item) => item.id === selectedId) ?? null;
+  }, [locationNameSelection, namedLocations]);
+
   async function saveLocation() {
-    const locationName = locationNameInput.trim();
     const hasExistingSelection = selectedExistingLocation !== null;
+    const locationName = hasExistingSelection
+      ? (getLocationName(selectedExistingLocation) ?? "").trim()
+      : customLocationNameInput.trim();
 
     if (!locationName) {
       setSaveState({ status: "error", message: "Enter a location name." });
@@ -216,7 +221,7 @@ export function LocationPickerMap() {
     if (!selectedExistingLocation) {
       setSaveState({
         status: "error",
-        message: "Location name not found in existing values. Pick one from the list.",
+        message: "Location not found in existing values. Pick one from the list.",
       });
       return;
     }
@@ -234,7 +239,7 @@ export function LocationPickerMap() {
       <div className="space-y-2">
         <h1 className="text-3xl font-semibold tracking-tight">Locations</h1>
         <p className="text-muted-foreground">
-          Select an existing location name or pick coordinates to create a new named location.
+          Select an existing location or pick coordinates to create a new saved location.
         </p>
       </div>
 
@@ -311,33 +316,51 @@ export function LocationPickerMap() {
 
       <div className="grid gap-4 md:grid-cols-2">
         <label className="space-y-2">
-          <span className="text-sm font-medium">Location Name</span>
-          <input
-            list="existing-location-names"
-            type="text"
-            value={locationNameInput}
-            onChange={(event) => {
-              setLocationNameInput(event.target.value);
+          <span className="text-sm font-medium">Location</span>
+          <Select
+            value={locationNameSelection}
+            onValueChange={(value) => {
+              setLocationNameSelection(value);
               setSaveState({ status: "idle" });
             }}
-            className="h-9 w-full rounded-md border bg-background px-3 py-1 text-sm shadow-xs outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
-            placeholder={
-              namedLocations.length > 0
-                ? `e.g. ${getLocationName(namedLocations[0])}`
-                : "Enter location name"
-            }
-          />
-          <datalist id="existing-location-names">
-            {namedLocations.map((location) => (
-              <option key={location.id} value={getLocationName(location) ?? ""} />
-            ))}
-          </datalist>
+          >
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Select a location" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectGroup>
+                <SelectLabel>Location</SelectLabel>
+                <SelectItem value={CUSTOM_LOCATION_NAME_VALUE}>Add new location</SelectItem>
+                {namedLocations.map((location) => (
+                  <SelectItem key={location.id} value={String(location.id)}>
+                    {getLocationName(location)}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+          {locationNameSelection === CUSTOM_LOCATION_NAME_VALUE ? (
+            <input
+              type="text"
+              value={customLocationNameInput}
+              onChange={(event) => {
+                setCustomLocationNameInput(event.target.value);
+                setSaveState({ status: "idle" });
+              }}
+              className="h-9 w-full rounded-md border bg-background px-3 py-1 text-sm shadow-xs outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
+              placeholder={
+                namedLocations.length > 0
+                  ? `e.g. ${getLocationName(namedLocations[0])}`
+                  : "Enter location name"
+              }
+            />
+          ) : null}
           <p className="text-xs text-muted-foreground">
-            IDs are internal. Select an existing name or type a new one.
+            Edit an existing location or create a new one.
           </p>
         </label>
         <label className="space-y-2">
-          <span className="text-sm font-medium invisible">Populate from location</span>
+          <span className="text-sm font-medium invisible">Read saved values</span>
           <div className="flex">
             <Button
               type="button"
@@ -346,7 +369,7 @@ export function LocationPickerMap() {
               className="w-auto"
               disabled={!selectedExistingLocation}
             >
-              Populate from location
+              Read saved values
             </Button>
           </div>
         </label>
