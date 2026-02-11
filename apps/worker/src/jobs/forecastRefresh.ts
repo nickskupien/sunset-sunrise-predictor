@@ -178,6 +178,7 @@ export async function forecastRefresh(db: Db["db"], payloadRaw: unknown) {
     longitude: uniquePoints.map((p) => p.lon.toFixed(6)).join(","),
     hourly,
     forecast_days: String(payload.forecastDays),
+    timezone: "auto",
     timeformat: "unixtime",
   });
 

@@ -1,4 +1,4 @@
-import { eq, sql } from "drizzle-orm";
+import { eq, inArray, sql } from "drizzle-orm";
 import type { Db } from "./index.js";
 import { forecastPoints, forecastHourly, locationForecastPoints } from "./schema.js";
 
@@ -207,4 +207,39 @@ export async function getNearestHourlyForPoints(
   }
 
   return byPoint;
+}
+
+export async function listForecastPointsByIds(
+  db: Db["db"],
+  pointIds: number[],
+): Promise<Array<{ id: number; lat: number; lon: number }>> {
+  if (pointIds.length === 0) return [];
+
+  return db
+    .select({
+      id: forecastPoints.id,
+      lat: forecastPoints.lat,
+      lon: forecastPoints.lon,
+    })
+    .from(forecastPoints)
+    .where(inArray(forecastPoints.id, pointIds));
+}
+
+export async function listHourlyTimesForPointInRange(
+  db: Db["db"],
+  params: { pointId: number; fromMs: number; toMs: number },
+): Promise<number[]> {
+  if (!Number.isFinite(params.pointId)) return [];
+  if (!Number.isFinite(params.fromMs) || !Number.isFinite(params.toMs)) return [];
+
+  const rows = await db
+    .select({ timeMs: forecastHourly.timeMs })
+    .from(forecastHourly)
+    .where(
+      sql`${forecastHourly.forecastPointId} = ${params.pointId}
+        AND ${forecastHourly.timeMs} BETWEEN ${params.fromMs} AND ${params.toMs}`,
+    )
+    .orderBy(forecastHourly.timeMs);
+
+  return rows.map((row) => Number(row.timeMs)).filter((value) => Number.isFinite(value));
 }
