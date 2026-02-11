@@ -35,3 +35,8 @@ curl -X POST http://localhost:3001/jobs \
   -d '{"type":"forecast.refresh","key":"forecast_hourly:location:1","payload":{"locationId":1}}'
 
 ## Job: computeScore
+
+## Job: All in one (forecast refresh + compute score)
+curl -s -X POST http://localhost:3001/scores/prepare/1 \
+  -H "content-type: application/json" \
+  -d '{"forecastDays":3,"kinds":["sunset","sunrise"]}'
