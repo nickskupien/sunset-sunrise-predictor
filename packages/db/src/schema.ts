@@ -97,6 +97,7 @@ export const locations = pgTable(
   {
     id: serial("id").primaryKey(),
     key: text("key").notNull(),
+    name: text("name"),
     lat: doublePrecision("lat").notNull(),
     lon: doublePrecision("lon").notNull(),
     tz: text("tz"),

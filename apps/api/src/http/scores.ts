@@ -22,6 +22,7 @@ const CoordsSchema = z.object({
 });
 
 const PrepareBodySchema = CoordsSchema.extend({
+  name: z.string().trim().min(1).max(120).optional(),
   forecastDays: z.coerce.number().int().min(1).max(16).default(7),
   kinds: z.array(z.enum(["sunset", "sunrise"])).default(["sunset", "sunrise"]),
 });
@@ -152,6 +153,7 @@ export async function registerScoresRoutes(app: FastifyInstance) {
     const location = await upsertLocation(db, {
       lat: body.lat,
       lon: body.lon,
+      name: body.name ?? null,
       decimals: 3,
     });
 
@@ -175,6 +177,7 @@ export async function registerScoresRoutes(app: FastifyInstance) {
       requestId: forecastJob.id,
       locationId: location.id,
       locationKey: location.key,
+      locationName: location.name ?? null,
       timezone: location.tz ?? null,
       kinds: body.kinds,
       forecastDays: body.forecastDays,
@@ -214,6 +217,7 @@ export async function registerScoresRoutes(app: FastifyInstance) {
       requestId: forecastJob.id,
       locationId: location.id,
       locationKey: location.key,
+      locationName: location.name ?? null,
       timezone: location.tz ?? null,
       kinds: body.kinds,
       forecastDays: body.forecastDays,

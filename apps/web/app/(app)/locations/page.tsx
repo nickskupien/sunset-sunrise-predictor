@@ -1,10 +1,5 @@
-import { RoutePage } from "@/components/layout/route-page";
+import { LocationPickerClient } from "@/components/locations/location-picker-client";
 
 export default function LocationsPage() {
-  return (
-    <RoutePage
-      title="Locations"
-      description="Manage tracked locations and defaults from this page."
-    />
-  );
+  return <LocationPickerClient />;
 }

@@ -19,6 +19,7 @@
     "aio:migrate": "./scripts/aio-migrate.sh"
   },
   "devDependencies": {
+    "@types/node": "^25.2.3",
     "@sunset/config": "workspace:*",
     "drizzle-kit": "^0.31.8",
     "typescript": "^5.9.3"

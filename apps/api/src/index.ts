@@ -2,6 +2,7 @@ import Fastify from "fastify";
 import { registerHealthRoutes } from "./http/health.js";
 import { registerDbHealthRoutes } from "./http/dbHealth.js";
 import { registerJobsRoutes } from "./http/jobs.js";
+import { registerLocationsRoutes } from "./http/locations.js";
 import { registerScoresRoutes } from "./http/scores.js";
 import { getEnv } from "./config/env.js";
 import { pool } from "./config/db.js";
@@ -15,6 +16,7 @@ const app = Fastify({
 await registerHealthRoutes(app);
 await registerDbHealthRoutes(app);
 await registerJobsRoutes(app);
+await registerLocationsRoutes(app);
 await registerScoresRoutes(app);
 
 async function shutdown() {

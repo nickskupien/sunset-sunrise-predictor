@@ -1,4 +1,4 @@
-import { eq, sql } from "drizzle-orm";
+import { desc, eq, sql } from "drizzle-orm";
 import type { Db } from "./index.js";
 import { locations } from "./schema.js";
 
@@ -25,18 +25,20 @@ export function makeLocationKey(lat: number, lon: number, decimals = 3) {
 
 export async function upsertLocation(
   db: Db["db"],
-  input: { lat: number; lon: number; tz?: string | null; decimals?: number },
+  input: { lat: number; lon: number; tz?: string | null; name?: string | null; decimals?: number },
 ) {
   const decimals = input.decimals ?? 3;
   const lat = roundTo(input.lat, decimals);
   const lon = roundTo(input.lon, decimals);
   const key = makeLocationKey(lat, lon, decimals);
   const tz = input.tz ?? null;
+  const name = input.name?.trim() ? input.name.trim() : null;
 
   const rows = await db
     .insert(locations)
     .values({
       key,
+      name,
       lat,
       lon,
       tz,
@@ -47,6 +49,7 @@ export async function upsertLocation(
       set: {
         lat,
         lon,
+        name: name ?? locations.name,
         tz: tz ?? locations.tz,
         updatedAt: new Date(),
       },
@@ -85,4 +88,9 @@ export async function getLocationByKey(db: Db["db"], key: string) {
 export async function getLocationById(db: Db["db"], id: number) {
   const rows = await db.select().from(locations).where(eq(locations.id, id)).limit(1);
   return rows[0] ?? null;
+}
+
+export async function listLocations(db: Db["db"], input?: { limit?: number }) {
+  const limit = Math.min(Math.max(input?.limit ?? 100, 1), 500);
+  return db.select().from(locations).orderBy(desc(locations.updatedAt), desc(locations.id)).limit(limit);
 }
