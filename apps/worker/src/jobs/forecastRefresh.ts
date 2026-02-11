@@ -200,6 +200,7 @@ export async function forecastRefresh(db: Db["db"], payloadRaw: unknown) {
       longitude: pointsChunk.map((p) => p.lon.toFixed(coordinatePrecision)).join(","),
       hourly,
       forecast_days: String(payload.forecastDays),
+      past_days: "1",
       timezone: "auto",
       timeformat: "unixtime",
     });
