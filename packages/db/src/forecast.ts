@@ -184,7 +184,6 @@ export async function getNearestHourlyForPoints(
     ORDER BY fh.forecast_point_id, ABS(fh.time_ms - ${params.targetMs}) ASC;
   `);
 
-  // @ts-expect-error node-postgres rows
   const rows = (result.rows ?? []) as any[];
 
   const byPoint = new Map<number, ForecastNearestHourlyRow>();

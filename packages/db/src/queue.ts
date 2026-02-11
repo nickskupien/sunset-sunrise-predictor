@@ -186,7 +186,6 @@ export async function claimNextJob(db: Db["db"], workerId: string): Promise<Clai
       (extract(epoch from jq.updated_at) * 1000)::bigint      AS "updatedAtMs";
   `);
 
-  // @ts-expect-error pg driver rows exist at runtime
   const row = (result.rows?.[0] ?? null) as RawClaimedJob | null;
   return row ? normalizeClaimedJob(row) : null;
 }
@@ -410,7 +409,6 @@ export async function listJobs(db: Db["db"], opts?: { status?: JobStatus; limit?
     LIMIT ${limit};
   `);
 
-  // @ts-expect-error pg rows exist at runtime
   const rows = (result.rows ?? []) as RawJobListItem[];
   return rows.map(normalizeJobListItem);
 }
@@ -441,7 +439,6 @@ export async function getJob(db: Db["db"], id: number) {
     LIMIT 1;
   `);
 
-  // @ts-expect-error pg rows exist at runtime
   const row = (result.rows?.[0] ?? null) as RawJobListItem | null;
   return row ? normalizeJobListItem(row) : null;
 }
@@ -469,7 +466,6 @@ export async function listJobRuns(db: Db["db"], jobId: number, opts?: { limit?: 
     LIMIT ${limit};
   `);
 
-  // @ts-expect-error pg rows exist at runtime
   const rows = (result.rows ?? []) as RawJobRunItem[];
   return rows.map(normalizeJobRunItem);
 }

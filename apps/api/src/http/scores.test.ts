@@ -27,6 +27,26 @@ import {
 } from "@sunset/db";
 import { registerScoresRoutes } from "./scores.js";
 
+function makeQueuedJob(input: { type: string; key: string; payload: unknown }) {
+  const now = new Date();
+  return {
+    id: Math.floor(Math.random() * 1000) + 1,
+    type: input.type,
+    key: input.key,
+    payload: input.payload,
+    status: "queued" as const,
+    runAfter: now,
+    attempts: 0,
+    maxAttempts: 5,
+    lockedBy: null,
+    lockedAt: null,
+    lastError: null,
+    lastErrorAt: null,
+    createdAt: now,
+    updatedAt: now,
+  };
+}
+
 describe("registerScoresRoutes", () => {
   let app: FastifyInstance;
 
@@ -149,13 +169,13 @@ describe("registerScoresRoutes", () => {
       tz: "America/Toronto",
     } as any);
 
-    vi.mocked(enqueueJob).mockImplementation(async (_db, input: any) => ({
-      id: Math.floor(Math.random() * 1000) + 1,
-      type: input.type,
-      key: input.key,
-      payload: input.payload,
-      status: "queued",
-    }));
+    vi.mocked(enqueueJob).mockImplementation(async (_db, input: any) =>
+      makeQueuedJob({
+        type: input.type,
+        key: input.key,
+        payload: input.payload,
+      }),
+    );
 
     const response = await app.inject({
       method: "POST",
@@ -195,13 +215,13 @@ describe("registerScoresRoutes", () => {
       tz: "America/Toronto",
     } as any);
 
-    vi.mocked(enqueueJob).mockImplementation(async (_db, input: any) => ({
-      id: Math.floor(Math.random() * 1000) + 1,
-      type: input.type,
-      key: input.key,
-      payload: input.payload,
-      status: "queued",
-    }));
+    vi.mocked(enqueueJob).mockImplementation(async (_db, input: any) =>
+      makeQueuedJob({
+        type: input.type,
+        key: input.key,
+        payload: input.payload,
+      }),
+    );
 
     const response = await app.inject({
       method: "POST",
