@@ -2,7 +2,6 @@ import type { Db } from "@sunset/db";
 import { z } from "zod";
 import SunCalc from "suncalc";
 import {
-  listScoresForDay,
   upsertScores,
   getLocationById,
   getLocationForecastGrid,
@@ -253,9 +252,6 @@ function scoreTypes(m: any): Record<ScoreType, number> {
 // ---------- main ----------
 export async function scoreCompute(db: Db["db"], payloadRaw: unknown) {
   const payload = PayloadSchema.parse(payloadRaw);
-
-  const existing = await listScoresForDay(db, payload);
-  if (existing.length > 0) return existing;
 
   const location = await getLocationById(db, payload.locationId);
   if (!location) throw new Error(`location not found id=${payload.locationId}`);

@@ -2,7 +2,6 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // Mock @sunset/db module
 vi.mock("@sunset/db", () => ({
-  listScoresForDay: vi.fn(),
   upsertScores: vi.fn(),
   getLocationById: vi.fn(),
   getLocationForecastGrid: vi.fn(),
@@ -20,7 +19,6 @@ import {
   getLocationById,
   getLocationForecastGrid,
   getNearestHourlyForPoints,
-  listScoresForDay,
   upsertScores,
 } from "@sunset/db";
 import SunCalc from "suncalc";
@@ -34,58 +32,10 @@ describe("scoreCompute", () => {
     vi.clearAllMocks();
   });
 
-  it("should return existing scores if they are already computed", async () => {
-    const existingScores = [
-      {
-        id: 1,
-        locationId: 42,
-        day: "2026-01-15",
-        kind: "sunset",
-        type: "burning_sky",
-        score: 70,
-        inputs: {},
-        computedAtMs: 1705300000000,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
-      {
-        id: 2,
-        locationId: 42,
-        day: "2026-01-15",
-        kind: "sunset",
-        type: "gradient",
-        score: 50,
-        inputs: {},
-        computedAtMs: 1705300000000,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
-    ];
-
-    vi.mocked(listScoresForDay).mockResolvedValue(existingScores);
-
-    const result = await scoreCompute(mockDb, {
-      locationId: 42,
-      day: "2026-01-15",
-      kind: "sunset",
-    });
-
-    expect(result).toEqual(existingScores);
-    expect(listScoresForDay).toHaveBeenCalledWith(mockDb, {
-      locationId: 42,
-      day: "2026-01-15",
-      kind: "sunset",
-    });
-    expect(upsertScores).not.toHaveBeenCalled();
-    expect(getLocationById).not.toHaveBeenCalled();
-    expect(getLocationForecastGrid).not.toHaveBeenCalled();
-    expect(getNearestHourlyForPoints).not.toHaveBeenCalled();
-  });
-
-  it("should compute and upsert new scores if none exist", async () => {
-    vi.mocked(listScoresForDay).mockResolvedValue([]);
+  it("should recompute and upsert even if old scores already exist", async () => {
     const targetMs = ms("2026-01-15T23:00:00Z");
     vi.mocked(getLocationById).mockResolvedValue({
+      locationId: 42,
       id: 42,
       lat: 43.25,
       lon: -79.87,
@@ -127,6 +77,8 @@ describe("scoreCompute", () => {
     vi.mocked(getNearestHourlyForPoints).mockResolvedValue(hourlyByPoint);
     vi.mocked(upsertScores).mockImplementation(async (_db, rows) => rows as any);
 
+    vi.mocked(upsertScores).mockImplementation(async (_db, rows) => rows as any);
+
     const result = await scoreCompute(mockDb, {
       locationId: 42,
       day: "2026-01-15",
@@ -134,11 +86,6 @@ describe("scoreCompute", () => {
     });
 
     expect(result).toHaveLength(4);
-    expect(listScoresForDay).toHaveBeenCalledWith(mockDb, {
-      locationId: 42,
-      day: "2026-01-15",
-      kind: "sunset",
-    });
     expect(getLocationById).toHaveBeenCalledWith(mockDb, 42);
     expect(SunCalc.getTimes).toHaveBeenCalled();
     expect(getLocationForecastGrid).toHaveBeenCalledWith(mockDb, 42);
@@ -192,8 +139,60 @@ describe("scoreCompute", () => {
     }
   });
 
+  it("should compute and upsert new scores", async () => {
+    const targetMs = ms("2026-01-15T23:00:00Z");
+    vi.mocked(getLocationById).mockResolvedValue({
+      id: 42,
+      lat: 43.25,
+      lon: -79.87,
+      tz: "America/Toronto",
+    } as any);
+    vi.mocked(SunCalc.getTimes).mockReturnValue({
+      sunrise: new Date(targetMs - 12 * 60 * 60 * 1000),
+      sunset: new Date(targetMs),
+    } as any);
+    vi.mocked(SunCalc.getPosition).mockReturnValue({
+      azimuth: Math.PI / 2,
+    } as any);
+
+    const gridSize = 11;
+    const grid: { gridI: number; gridJ: number; forecastPointId: number }[] = [];
+    const hourlyByPoint = new Map<number, any>();
+    let id = 1;
+    for (let j = 0; j < gridSize; j++) {
+      for (let i = 0; i < gridSize; i++) {
+        grid.push({ gridI: i, gridJ: j, forecastPointId: id });
+        hourlyByPoint.set(id, {
+          forecastPointId: id,
+          timeMs: targetMs,
+          relativeHumidity: 55 + (i + j) % 10,
+          precipitationProbability: 5 + (i % 5),
+          precipitation: 0,
+          temperature: 8 - j * 0.2,
+          cloudCover: 35 + ((i + j) % 5) * 8,
+          cloudCoverLow: 10 + (i % 6) * 5,
+          cloudCoverMid: 15 + (j % 6) * 5,
+          cloudCoverHigh: 40 + ((i + j) % 6) * 5,
+          visibility: 11000 + ((i + j) % 5) * 1000,
+        });
+        id++;
+      }
+    }
+
+    vi.mocked(getLocationForecastGrid).mockResolvedValue(grid);
+    vi.mocked(getNearestHourlyForPoints).mockResolvedValue(hourlyByPoint);
+    vi.mocked(upsertScores).mockImplementation(async (_db, rows) => rows as any);
+
+    await scoreCompute(mockDb, {
+      locationId: 42,
+      day: "2026-01-15",
+      kind: "sunset",
+    });
+
+    expect(upsertScores).toHaveBeenCalledTimes(1);
+  });
+
   it("should handle sunrise kind correctly", async () => {
-    vi.mocked(listScoresForDay).mockResolvedValue([]);
     const targetMs = ms("2026-02-20T13:00:00Z");
     vi.mocked(getLocationById).mockResolvedValue({
       id: 10,

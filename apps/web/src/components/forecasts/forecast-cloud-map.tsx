@@ -144,7 +144,10 @@ export function ForecastCloudMap({
           setData(next);
 
           if (!useCustomHour) {
-            const nearestIndex = findNearestHourIndex(next.availableTimeMs ?? [], next.matchedTimeMs);
+            const nearestIndex = findNearestHourIndex(
+              next.availableTimeMs ?? [],
+              next.matchedTimeMs,
+            );
             if (nearestIndex >= 0) setScrubTimeMs(next.availableTimeMs[nearestIndex]!);
           }
         }
@@ -172,9 +175,15 @@ export function ForecastCloudMap({
   }, [data, defaultCenter]);
 
   const layerLabel =
-    layer === "low" ? "Low clouds" : layer === "mid" ? "Mid clouds" : layer === "high" ? "High clouds" : "Total cloud cover";
+    layer === "low"
+      ? "Low clouds"
+      : layer === "mid"
+        ? "Mid clouds"
+        : layer === "high"
+          ? "High clouds"
+          : "Total cloud cover";
   const timeline = data?.availableTimeMs ?? [];
-  const activeTimeMs = useCustomHour ? scrubTimeMs : data?.matchedTimeMs ?? scrubTimeMs;
+  const activeTimeMs = useCustomHour ? scrubTimeMs : (data?.matchedTimeMs ?? scrubTimeMs);
   const activeHourIndex = activeTimeMs ? findNearestHourIndex(timeline, activeTimeMs) : -1;
   const sliderIndex = activeHourIndex >= 0 ? activeHourIndex : 0;
 
@@ -262,14 +271,19 @@ export function ForecastCloudMap({
         <p className="text-xs text-muted-foreground">Color scale for {layerLabel}</p>
         <div className="flex flex-wrap items-center gap-2">
           {LEGEND_STOPS.map((stop, index) => (
-            <div key={stop} className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+            <div
+              key={stop}
+              className="inline-flex items-center gap-1.5 text-xs text-muted-foreground"
+            >
               <span
                 className="inline-block size-3 rounded-sm border"
                 style={{ backgroundColor: cloudCoverageColor(stop) }}
                 aria-hidden
               />
               <span>
-                {index === LEGEND_STOPS.length - 1 ? `${stop}%` : `${stop}-${LEGEND_STOPS[index + 1]}%`}
+                {index === LEGEND_STOPS.length - 1
+                  ? `${stop}%`
+                  : `${stop}-${LEGEND_STOPS[index + 1]}%`}
               </span>
             </div>
           ))}
@@ -307,15 +321,9 @@ export function ForecastCloudMap({
             aria-label="Hour scrubber timeline"
           />
           <p className="text-xs text-muted-foreground">
-            Hour scrubber: {activeTimeMs ? formatHour(activeTimeMs, timeZone) : "No hour selected"}
+            Selected hour: {activeTimeMs ? formatHour(activeTimeMs, timeZone) : "No hour selected"}
           </p>
         </div>
-      ) : null}
-
-      {data?.matchedTimeMs ? (
-        <p className="text-xs text-muted-foreground">
-          Event-matched hour: {formatHour(data.matchedTimeMs, timeZone)}
-        </p>
       ) : null}
     </section>
   );
