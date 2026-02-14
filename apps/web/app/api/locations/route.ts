@@ -16,3 +16,11 @@ export async function GET(req: Request) {
     path: `/locations?limit=${safeLimit}`,
   });
 }
+
+export async function POST(req: Request) {
+  return proxyApiRequest({
+    method: "POST",
+    path: "/locations",
+    body: await req.text(),
+  });
+}

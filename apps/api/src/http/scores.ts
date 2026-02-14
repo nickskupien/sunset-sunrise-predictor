@@ -44,6 +44,7 @@ const CoordsScoreQuerySchema = CoordsSchema.extend({
 const StatusQuerySchema = CoordsSchema.extend({
   forecastDays: z.coerce.number().int().min(1).max(16).default(7),
   kinds: z.string().optional(), // comma-separated
+  minComputedAtMs: z.coerce.number().int().nonnegative().optional(),
 });
 
 const StatusLocationParamsSchema = z.object({
@@ -53,6 +54,7 @@ const StatusLocationParamsSchema = z.object({
 const StatusLocationQuerySchema = z.object({
   forecastDays: z.coerce.number().int().min(1).max(16).default(7),
   kinds: z.string().optional(), // comma-separated
+  minComputedAtMs: z.coerce.number().int().nonnegative().optional(),
 });
 
 const DATE_FMT = new Intl.DateTimeFormat("en-CA", {
@@ -149,6 +151,7 @@ export async function registerScoresRoutes(app: FastifyInstance) {
   // Prepare scores by coordinates (enqueue forecast + schedule jobs)
   app.post("/scores/prepare", async (req, reply) => {
     const body = PrepareBodySchema.parse(req.body);
+    const acceptedAtMs = Date.now();
 
     const location = await upsertLocation(db, {
       lat: body.lat,
@@ -181,6 +184,7 @@ export async function registerScoresRoutes(app: FastifyInstance) {
       timezone: location.tz ?? null,
       kinds: body.kinds,
       forecastDays: body.forecastDays,
+      acceptedAtMs,
       jobs: {
         forecast: forecastJob,
       },
@@ -191,6 +195,7 @@ export async function registerScoresRoutes(app: FastifyInstance) {
   app.post("/scores/prepare/:locationId", async (req, reply) => {
     const params = PrepareLocationParamsSchema.parse(req.params);
     const body = PrepareLocationBodySchema.parse(req.body ?? {});
+    const acceptedAtMs = Date.now();
 
     const location = await getLocationById(db, params.locationId);
     if (!location) {
@@ -221,6 +226,7 @@ export async function registerScoresRoutes(app: FastifyInstance) {
       timezone: location.tz ?? null,
       kinds: body.kinds,
       forecastDays: body.forecastDays,
+      acceptedAtMs,
       jobs: {
         forecast: forecastJob,
       },
@@ -243,6 +249,7 @@ export async function registerScoresRoutes(app: FastifyInstance) {
   app.get("/scores/status", async (req, reply) => {
     const q = StatusQuerySchema.parse((req as any).query ?? {});
     const kinds = parseKinds(q.kinds);
+    const minComputedAtMs = q.minComputedAtMs ?? null;
 
     const location = await getLocationForCoords(db, q.lat, q.lon);
     if (!location) {
@@ -270,7 +277,10 @@ export async function registerScoresRoutes(app: FastifyInstance) {
           day,
           kind,
         });
-        checks.push({ day, kind, ready: rows.length > 0 });
+        const ready =
+          rows.length > 0 &&
+          (minComputedAtMs == null || rows.every((row) => row.computedAtMs >= minComputedAtMs));
+        checks.push({ day, kind, ready });
       }
     }
 
@@ -295,6 +305,7 @@ export async function registerScoresRoutes(app: FastifyInstance) {
     const params = StatusLocationParamsSchema.parse(req.params);
     const q = StatusLocationQuerySchema.parse((req as any).query ?? {});
     const kinds = parseKinds(q.kinds);
+    const minComputedAtMs = q.minComputedAtMs ?? null;
 
     const location = await getLocationById(db, params.locationId);
     if (!location) {
@@ -322,7 +333,10 @@ export async function registerScoresRoutes(app: FastifyInstance) {
           day,
           kind,
         });
-        checks.push({ day, kind, ready: rows.length > 0 });
+        const ready =
+          rows.length > 0 &&
+          (minComputedAtMs == null || rows.every((row) => row.computedAtMs >= minComputedAtMs));
+        checks.push({ day, kind, ready });
       }
     }
 

@@ -21,7 +21,7 @@ import {
 type SaveState =
   | { status: "idle" }
   | { status: "saving" }
-  | { status: "success"; locationId: number; requestId: number }
+  | { status: "success"; locationId: number }
   | { status: "error"; message: string };
 
 type ExistingLocation = {
@@ -71,6 +71,32 @@ function getLocationName(location: ExistingLocation) {
   return name && name.length > 0 ? name : null;
 }
 
+function isExistingLocation(item: unknown): item is ExistingLocation {
+  return (
+    typeof item === "object" &&
+    item !== null &&
+    typeof (item as ExistingLocation).id === "number" &&
+    typeof (item as ExistingLocation).key === "string" &&
+    (typeof (item as ExistingLocation).name === "string" || (item as ExistingLocation).name === null) &&
+    typeof (item as ExistingLocation).lat === "number" &&
+    typeof (item as ExistingLocation).lon === "number"
+  );
+}
+
+async function fetchExistingLocations(): Promise<ExistingLocation[]> {
+  try {
+    const response = await fetch(`/api/locations?limit=200`, { cache: "no-store" });
+    if (!response.ok) return [];
+
+    const data = await response.json();
+    if (!data?.ok || !Array.isArray(data.locations)) return [];
+
+    return data.locations.filter(isExistingLocation).slice(0, 200);
+  } catch {
+    return [];
+  }
+}
+
 export function LocationPickerMap() {
   const [lat, setLat] = useState<number | null>(null);
   const [lon, setLon] = useState<number | null>(null);
@@ -85,34 +111,12 @@ export function LocationPickerMap() {
   useEffect(() => {
     let cancelled = false;
 
-    async function fetchExistingLocations() {
-      try {
-        const response = await fetch(`/api/locations?limit=200`, { cache: "no-store" });
-        if (!response.ok) return;
-        const data = await response.json();
-        if (!data?.ok || !Array.isArray(data.locations)) return;
-
-        const locations = data.locations
-          .filter(
-            (item: unknown): item is ExistingLocation =>
-              typeof item === "object" &&
-              item !== null &&
-              typeof (item as ExistingLocation).id === "number" &&
-              typeof (item as ExistingLocation).key === "string" &&
-              (typeof (item as ExistingLocation).name === "string" ||
-                (item as ExistingLocation).name === null) &&
-              typeof (item as ExistingLocation).lat === "number" &&
-              typeof (item as ExistingLocation).lon === "number",
-          )
-          .slice(0, 200);
-
-        if (!cancelled) setExistingLocations(locations);
-      } catch {
-        if (!cancelled) setExistingLocations([]);
-      }
+    async function loadExistingLocations() {
+      const locations = await fetchExistingLocations();
+      if (!cancelled) setExistingLocations(locations);
     }
 
-    void fetchExistingLocations();
+    void loadExistingLocations();
     return () => {
       cancelled = true;
     };
@@ -173,16 +177,18 @@ export function LocationPickerMap() {
     const locationName = hasExistingSelection
       ? (getLocationName(selectedExistingLocation) ?? "").trim()
       : customLocationNameInput.trim();
+    const saveLat = hasExistingSelection ? selectedExistingLocation.lat : selected?.lat;
+    const saveLon = hasExistingSelection ? selectedExistingLocation.lon : selected?.lon;
 
     if (!locationName) {
       setSaveState({ status: "error", message: "Enter a location name." });
       return;
     }
 
-    if (!hasExistingSelection && !selected) {
+    if (saveLat == null || saveLon == null) {
       setSaveState({
         status: "error",
-        message: "Pick coordinates on the map to create a new named location.",
+        message: "Pick coordinates on the map to save a location.",
       });
       return;
     }
@@ -190,29 +196,15 @@ export function LocationPickerMap() {
     try {
       setSaveState({ status: "saving" });
 
-      const response = await fetch(
-        hasExistingSelection
-          ? `/api/scores/prepare/${selectedExistingLocation.id}`
-          : `/api/scores/prepare`,
-        {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify(
-            hasExistingSelection
-              ? {
-                  forecastDays: 7,
-                  kinds: ["sunset", "sunrise"],
-                }
-              : {
-                  name: locationName,
-                  lat: selected!.lat,
-                  lon: selected!.lon,
-                  forecastDays: 7,
-                  kinds: ["sunset", "sunrise"],
-                },
-          ),
-        },
-      );
+      const response = await fetch(`/api/locations`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          name: locationName,
+          lat: saveLat,
+          lon: saveLon,
+        }),
+      });
 
       const data = await response.json();
 
@@ -222,12 +214,14 @@ export function LocationPickerMap() {
         return;
       }
 
-      if (typeof data.locationId !== "number" || typeof data.requestId !== "number") {
+      const locationId = data?.location?.id;
+      if (typeof locationId !== "number") {
         setSaveState({ status: "error", message: "Unexpected response from server." });
         return;
       }
 
-      setSaveState({ status: "success", locationId: data.locationId, requestId: data.requestId });
+      setSaveState({ status: "success", locationId });
+      setExistingLocations(await fetchExistingLocations());
     } catch {
       setSaveState({ status: "error", message: "Network error while saving location." });
     }
@@ -422,7 +416,7 @@ export function LocationPickerMap() {
           type="button"
           onClick={saveLocation}
           disabled={saveState.status === "saving"}
-          title="Queue jobs for this location"
+          title="Save this location"
         >
           {saveState.status === "saving" ? "Saving..." : "Save location"}
         </Button>
@@ -431,7 +425,7 @@ export function LocationPickerMap() {
       <div className="min-h-6 text-sm">
         {saveState.status === "success" ? (
           <p className="text-emerald-600">
-            Location saved. Forecast job queued (request #{saveState.requestId}).
+            Location saved (id #{saveState.locationId}). Use Refresh on Forecasts to run jobs.
           </p>
         ) : null}
         {saveState.status === "error" ? (
