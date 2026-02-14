@@ -1,8 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import {
+  readStoredForecastLocationId,
+  writeStoredForecastLocationId,
+} from "@/lib/forecast-location-storage";
 import {
   Select,
   SelectContent,
@@ -38,13 +42,45 @@ export function ForecastLocationPicker({ options, selectedId }: ForecastLocation
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [refreshProgress, setRefreshProgress] = useState<string | null>(null);
   const [refreshError, setRefreshError] = useState<string | null>(null);
+  const selectableLocationIds = useMemo(() => new Set(options.map((item) => item.id)), [options]);
+
+  useEffect(() => {
+    void writeStoredForecastLocationId(selectedId);
+  }, [selectedId]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function applyStoredLocation() {
+      const queryLocationId = searchParams.get("locationId");
+      if (queryLocationId) return;
+
+      const storedLocationId = await readStoredForecastLocationId();
+      if (cancelled) return;
+      if (storedLocationId == null) return;
+      if (!selectableLocationIds.has(storedLocationId)) return;
+      if (storedLocationId === selectedId) return;
+
+      const params = new URLSearchParams(searchParams.toString());
+      params.set("locationId", String(storedLocationId));
+      router.replace(`${pathname}?${params.toString()}`);
+      router.refresh();
+    }
+
+    void applyStoredLocation();
+    return () => {
+      cancelled = true;
+    };
+  }, [searchParams, selectableLocationIds, selectedId, pathname, router]);
 
   function handleChange(nextIdRaw: string) {
     const nextId = Number(nextIdRaw);
     if (!Number.isSafeInteger(nextId) || nextId <= 0) return;
+    if (!selectableLocationIds.has(nextId)) return;
 
     const params = new URLSearchParams(searchParams.toString());
     params.set("locationId", String(nextId));
+    void writeStoredForecastLocationId(nextId);
     router.replace(`${pathname}?${params.toString()}`);
     router.refresh();
   }
