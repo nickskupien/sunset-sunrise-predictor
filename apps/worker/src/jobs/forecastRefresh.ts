@@ -1,4 +1,5 @@
 import type { Db } from "@sunset/db";
+import { ForecastRefreshJobPayloadSchema } from "@sunset/contracts";
 import {
   enqueueJob,
   upsertForecastPoints,
@@ -7,7 +8,6 @@ import {
   getLocationById,
   setLocationTimezone,
 } from "@sunset/db";
-import { z } from "zod";
 
 /**
  * Payload is intentionally small and defaults match:
@@ -16,31 +16,6 @@ import { z } from "zod";
  * - 1km global snapping for dedupe
  * - forecastDays default 7
  */
-const PayloadSchema = z.object({
-  locationId: z.number().int().positive(),
-
-  forecastDays: z.number().int().min(1).max(16).default(7),
-
-  halfSizeKm: z.number().positive().default(40),
-  stepKm: z.number().positive().default(4),
-
-  // Global dedupe snapping in km (1km is a good default)
-  snapKm: z.number().positive().default(1),
-
-  // Optional: use a specific Open-Meteo endpoint if you want later
-  // baseUrl: z.string().url().optional(),
-
-  // Optional: enqueue score.schedule after refresh completes
-  schedule: z
-    .object({
-      forecastDays: z.number().int().min(1).max(16),
-      kinds: z.array(z.enum(["sunset", "sunrise"])),
-    })
-    .optional(),
-});
-
-type Payload = z.infer<typeof PayloadSchema>;
-
 // --- Web Mercator helpers (meters) ---
 // This makes the "square in km" actually square-ish regardless of latitude,
 // and makes snapping easy.
@@ -117,7 +92,7 @@ function num(v: any) {
 }
 
 export async function forecastRefresh(db: Db["db"], payloadRaw: unknown) {
-  const payload = PayloadSchema.parse(payloadRaw);
+  const payload = ForecastRefreshJobPayloadSchema.parse(payloadRaw);
 
   const loc = await getLocationById(db, payload.locationId);
 

@@ -1,5 +1,5 @@
 import type { Db } from "@sunset/db";
-import { z } from "zod";
+import { ScoreComputeJobPayloadSchema } from "@sunset/contracts";
 import SunCalc from "suncalc";
 import {
   upsertScores,
@@ -7,12 +7,6 @@ import {
   getLocationForecastGrid,
   getNearestHourlyForPoints,
 } from "@sunset/db";
-
-const PayloadSchema = z.object({
-  locationId: z.number().int().positive(),
-  day: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  kind: z.enum(["sunset", "sunrise"]),
-});
 
 const SCORE_TYPES = ["burning_sky", "gradient", "clear", "hazy"] as const;
 type ScoreType = (typeof SCORE_TYPES)[number];
@@ -251,7 +245,7 @@ function scoreTypes(m: any): Record<ScoreType, number> {
 
 // ---------- main ----------
 export async function scoreCompute(db: Db["db"], payloadRaw: unknown) {
-  const payload = PayloadSchema.parse(payloadRaw);
+  const payload = ScoreComputeJobPayloadSchema.parse(payloadRaw);
 
   const location = await getLocationById(db, payload.locationId);
   if (!location) throw new Error(`location not found id=${payload.locationId}`);

@@ -1,6 +1,10 @@
 import { getEnv } from "@/config/env";
 
 const UPSTREAM_TIMEOUT_MS = 10_000;
+const PROXY_RESPONSE_HEADERS = {
+  "cache-control": "no-store",
+  "x-content-type-options": "nosniff",
+};
 
 type ProxyRequest = {
   path: string;
@@ -8,7 +12,22 @@ type ProxyRequest = {
   body?: string;
 };
 
+function hasSafePath(path: string) {
+  return path.startsWith("/") && !path.includes("\r") && !path.includes("\n");
+}
+
 export async function proxyApiRequest(input: ProxyRequest): Promise<Response> {
+  if (!hasSafePath(input.path)) {
+    return Response.json(
+      {
+        ok: false,
+        error: "invalid_proxy_path",
+        message: "Proxy path must start with '/' and cannot contain control characters.",
+      },
+      { status: 500, headers: PROXY_RESPONSE_HEADERS },
+    );
+  }
+
   const env = getEnv();
   const url = `${env.API_BASE_URL}${input.path}`;
 
@@ -25,12 +44,22 @@ export async function proxyApiRequest(input: ProxyRequest): Promise<Response> {
 
     return new Response(text, {
       status: response.status,
-      headers: { "content-type": response.headers.get("content-type") ?? "application/json" },
+      headers: {
+        ...PROXY_RESPONSE_HEADERS,
+        "content-type": response.headers.get("content-type") ?? "application/json",
+      },
     });
-  } catch {
+  } catch (error) {
+    if (error instanceof Error && error.name === "TimeoutError") {
+      return Response.json(
+        { ok: false, error: "upstream_timeout", message: "The API service timed out." },
+        { status: 504, headers: PROXY_RESPONSE_HEADERS },
+      );
+    }
+
     return Response.json(
       { ok: false, error: "upstream_unreachable", message: "Unable to reach API service." },
-      { status: 502 },
+      { status: 502, headers: PROXY_RESPONSE_HEADERS },
     );
   }
 }

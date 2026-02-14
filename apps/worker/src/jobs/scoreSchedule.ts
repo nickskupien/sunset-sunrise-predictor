@@ -1,12 +1,6 @@
 import type { Db } from "@sunset/db";
-import { z } from "zod";
+import { ScoreScheduleJobPayloadSchema } from "@sunset/contracts";
 import { enqueueJob, getLocationById } from "@sunset/db";
-
-const PayloadSchema = z.object({
-  locationId: z.number().int().positive(),
-  forecastDays: z.number().int().min(1).max(16).default(7),
-  kinds: z.array(z.enum(["sunset", "sunrise"])).default(["sunset", "sunrise"]),
-});
 
 const DATE_FMT = new Intl.DateTimeFormat("en-CA", {
   year: "numeric",
@@ -45,7 +39,7 @@ function buildDayList(count: number, timeZone?: string | null) {
 }
 
 export async function scoreSchedule(db: Db["db"], payloadRaw: unknown) {
-  const payload = PayloadSchema.parse(payloadRaw);
+  const payload = ScoreScheduleJobPayloadSchema.parse(payloadRaw);
 
   const location = await getLocationById(db, payload.locationId);
   if (!location) throw new Error(`location not found id=${payload.locationId}`);

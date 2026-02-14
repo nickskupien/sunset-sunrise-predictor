@@ -1,20 +1,19 @@
+import { ForecastCloudMapQuerySchema } from "@sunset/contracts";
 import { proxyApiRequest } from "@/server/upstream-proxy";
+import { parseSearchParams } from "@/server/route-utils";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 export async function GET(req: Request) {
-  const incomingUrl = new URL(req.url);
-  const locationId = incomingUrl.searchParams.get("locationId");
-  const day = incomingUrl.searchParams.get("day");
-  const kind = incomingUrl.searchParams.get("kind");
-  const targetMs = incomingUrl.searchParams.get("targetMs");
+  const parsed = parseSearchParams(req, ForecastCloudMapQuerySchema);
+  if (!parsed.ok) return parsed.response;
 
   const params = new URLSearchParams();
-  if (locationId) params.set("locationId", locationId);
-  if (day) params.set("day", day);
-  if (kind) params.set("kind", kind);
-  if (targetMs) params.set("targetMs", targetMs);
+  params.set("locationId", String(parsed.data.locationId));
+  params.set("day", parsed.data.day);
+  params.set("kind", parsed.data.kind);
+  if (parsed.data.targetMs != null) params.set("targetMs", String(parsed.data.targetMs));
 
   return proxyApiRequest({
     method: "GET",

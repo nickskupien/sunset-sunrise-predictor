@@ -1,17 +1,11 @@
-import { z } from "zod";
+import { ApiEnvSchema, type ApiEnv } from "@sunset/contracts";
 
-const EnvSchema = z.object({
-  NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
-  PORT: z.coerce.number().int().positive().default(3001),
-  DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
-});
-
-export type Env = z.infer<typeof EnvSchema>;
+export type Env = ApiEnv;
 
 let cachedEnv: Env | null = null;
 
 export function getEnv(): Env {
   if (cachedEnv) return cachedEnv;
-  cachedEnv = EnvSchema.parse(process.env);
+  cachedEnv = ApiEnvSchema.parse(process.env);
   return cachedEnv;
 }

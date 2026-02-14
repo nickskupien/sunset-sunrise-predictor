@@ -1,16 +1,11 @@
-import { z } from "zod";
+import { WebEnvSchema, type WebEnv } from "@sunset/contracts";
 
-const EnvSchema = z.object({
-  NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
-  API_BASE_URL: z.string().url().default("http://localhost:3001"),
-});
-
-export type Env = z.infer<typeof EnvSchema>;
+export type Env = WebEnv;
 
 let cachedEnv: Env | null = null;
 
 export function getEnv(): Env {
   if (cachedEnv) return cachedEnv;
-  cachedEnv = EnvSchema.parse(process.env);
+  cachedEnv = WebEnvSchema.parse(process.env);
   return cachedEnv;
 }

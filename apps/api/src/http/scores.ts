@@ -1,5 +1,15 @@
 import type { FastifyInstance } from "fastify";
-import { z } from "zod";
+import {
+  DEFAULT_SCORE_KINDS,
+  LocationScoreParamsSchema,
+  LocationIdParamsSchema,
+  PrepareScoresByCoordinatesBodySchema,
+  PrepareScoresByLocationBodySchema,
+  ScoresByCoordinatesQuerySchema,
+  ScoresStatusByCoordinatesQuerySchema,
+  ScoresStatusByLocationQuerySchema,
+  type ScoresByCoordinatesQuery,
+} from "@sunset/contracts";
 import {
   createDb,
   enqueueJob,
@@ -9,53 +19,6 @@ import {
   makeLocationKey,
   upsertLocation,
 } from "@sunset/db";
-
-const ParamsSchema = z.object({
-  locationId: z.coerce.number().int().positive(),
-  day: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  kind: z.enum(["sunset", "sunrise"]),
-});
-
-const CoordsSchema = z.object({
-  lat: z.coerce.number().min(-90).max(90),
-  lon: z.coerce.number().min(-180).max(180),
-});
-
-const PrepareBodySchema = CoordsSchema.extend({
-  name: z.string().trim().min(1).max(120).optional(),
-  forecastDays: z.coerce.number().int().min(1).max(16).default(7),
-  kinds: z.array(z.enum(["sunset", "sunrise"])).default(["sunset", "sunrise"]),
-});
-
-const PrepareLocationParamsSchema = z.object({
-  locationId: z.coerce.number().int().positive(),
-});
-
-const PrepareLocationBodySchema = z.object({
-  forecastDays: z.coerce.number().int().min(1).max(16).default(7),
-  kinds: z.array(z.enum(["sunset", "sunrise"])).default(["sunset", "sunrise"]),
-});
-
-const CoordsScoreQuerySchema = CoordsSchema.extend({
-  day: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  kind: z.enum(["sunset", "sunrise"]),
-});
-
-const StatusQuerySchema = CoordsSchema.extend({
-  forecastDays: z.coerce.number().int().min(1).max(16).default(7),
-  kinds: z.string().optional(), // comma-separated
-  minComputedAtMs: z.coerce.number().int().nonnegative().optional(),
-});
-
-const StatusLocationParamsSchema = z.object({
-  locationId: z.coerce.number().int().positive(),
-});
-
-const StatusLocationQuerySchema = z.object({
-  forecastDays: z.coerce.number().int().min(1).max(16).default(7),
-  kinds: z.string().optional(), // comma-separated
-  minComputedAtMs: z.coerce.number().int().nonnegative().optional(),
-});
 
 const DATE_FMT = new Intl.DateTimeFormat("en-CA", {
   year: "numeric",
@@ -93,13 +56,6 @@ function buildDayList(count: number, timeZone?: string | null) {
   return days;
 }
 
-function parseKinds(raw?: string | null) {
-  if (!raw) return ["sunset", "sunrise"] as const;
-  const parts = raw.split(",").map((p) => p.trim());
-  const kinds = parts.filter((p) => p === "sunset" || p === "sunrise");
-  return kinds.length ? (kinds as ("sunset" | "sunrise")[]) : (["sunset", "sunrise"] as const);
-}
-
 async function getLocationForCoords(db: any, lat: number, lon: number) {
   const key = makeLocationKey(lat, lon, 3);
   return getLocationByKey(db, key);
@@ -107,7 +63,7 @@ async function getLocationForCoords(db: any, lat: number, lon: number) {
 
 async function handleScoresByCoords(
   db: any,
-  q: z.infer<typeof CoordsScoreQuerySchema>,
+  q: ScoresByCoordinatesQuery,
   reply: any,
 ) {
   const location = await getLocationForCoords(db, q.lat, q.lon);
@@ -150,7 +106,7 @@ export async function registerScoresRoutes(app: FastifyInstance) {
 
   // Prepare scores by coordinates (enqueue forecast + schedule jobs)
   app.post("/scores/prepare", async (req, reply) => {
-    const body = PrepareBodySchema.parse(req.body);
+    const body = PrepareScoresByCoordinatesBodySchema.parse(req.body);
     const acceptedAtMs = Date.now();
 
     const location = await upsertLocation(db, {
@@ -193,8 +149,8 @@ export async function registerScoresRoutes(app: FastifyInstance) {
 
   // Prepare scores by locationId (enqueue forecast + schedule jobs)
   app.post("/scores/prepare/:locationId", async (req, reply) => {
-    const params = PrepareLocationParamsSchema.parse(req.params);
-    const body = PrepareLocationBodySchema.parse(req.body ?? {});
+    const params = LocationIdParamsSchema.parse(req.params);
+    const body = PrepareScoresByLocationBodySchema.parse(req.body ?? {});
     const acceptedAtMs = Date.now();
 
     const location = await getLocationById(db, params.locationId);
@@ -235,20 +191,20 @@ export async function registerScoresRoutes(app: FastifyInstance) {
 
   // Fetch scores by coordinates (read-only)
   app.get("/scores/by-coords", async (req, reply) => {
-    const q = CoordsScoreQuerySchema.parse((req as any).query ?? {});
+    const q = ScoresByCoordinatesQuerySchema.parse((req as any).query ?? {});
     return handleScoresByCoords(db, q, reply);
   });
 
   // Fetch scores by coordinates (alias)
   app.get("/scores", async (req, reply) => {
-    const q = CoordsScoreQuerySchema.parse((req as any).query ?? {});
+    const q = ScoresByCoordinatesQuerySchema.parse((req as any).query ?? {});
     return handleScoresByCoords(db, q, reply);
   });
 
   // Status for a batch of days/kinds (read-only)
   app.get("/scores/status", async (req, reply) => {
-    const q = StatusQuerySchema.parse((req as any).query ?? {});
-    const kinds = parseKinds(q.kinds);
+    const q = ScoresStatusByCoordinatesQuerySchema.parse((req as any).query ?? {});
+    const kinds = q.kinds ?? [...DEFAULT_SCORE_KINDS];
     const minComputedAtMs = q.minComputedAtMs ?? null;
 
     const location = await getLocationForCoords(db, q.lat, q.lon);
@@ -302,9 +258,9 @@ export async function registerScoresRoutes(app: FastifyInstance) {
 
   // Status by locationId (read-only)
   app.get("/scores/status/:locationId", async (req, reply) => {
-    const params = StatusLocationParamsSchema.parse(req.params);
-    const q = StatusLocationQuerySchema.parse((req as any).query ?? {});
-    const kinds = parseKinds(q.kinds);
+    const params = LocationIdParamsSchema.parse(req.params);
+    const q = ScoresStatusByLocationQuerySchema.parse((req as any).query ?? {});
+    const kinds = q.kinds ?? [...DEFAULT_SCORE_KINDS];
     const minComputedAtMs = q.minComputedAtMs ?? null;
 
     const location = await getLocationById(db, params.locationId);
@@ -357,7 +313,7 @@ export async function registerScoresRoutes(app: FastifyInstance) {
   });
 
   app.get("/scores/:locationId/:day/:kind", async (req, reply) => {
-    const params = ParamsSchema.parse(req.params);
+    const params = LocationScoreParamsSchema.parse(req.params);
 
     const rows = await listScoresForDay(db, {
       locationId: params.locationId,

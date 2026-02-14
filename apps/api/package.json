@@ -14,8 +14,7 @@
   "dependencies": {
     "@sunset/contracts": "workspace:*",
     "@sunset/db": "workspace:*",
-    "fastify": "^5.7.1",
-    "zod": "^4.3.5"
+    "fastify": "^5.7.1"
   },
   "devDependencies": {
     "@sunset/config": "workspace:*",

@@ -12,9 +12,9 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@sunset/contracts": "workspace:*",
     "@sunset/db": "workspace:*",
-    "suncalc": "^1.9.0",
-    "zod": "^4.3.5"
+    "suncalc": "^1.9.0"
   },
   "devDependencies": {
     "@sunset/config": "workspace:*",

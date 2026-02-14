@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import { z } from "zod";
+import { ForecastCloudMapQuerySchema } from "@sunset/contracts";
 import {
   createDb,
   getLocationById,
@@ -9,13 +9,6 @@ import {
   listForecastPointsByIds,
   listScoresForDay,
 } from "@sunset/db";
-
-const CloudMapQuerySchema = z.object({
-  locationId: z.coerce.number().int().positive(),
-  day: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  kind: z.enum(["sunrise", "sunset"]),
-  targetMs: z.coerce.number().int().positive().optional(),
-});
 
 function getMatchedTimeMsFromScores(scores: Array<{ inputs: unknown }>) {
   for (const score of scores) {
@@ -39,7 +32,7 @@ export async function registerForecastRoutes(app: FastifyInstance) {
   });
 
   app.get("/forecast/cloud-map", async (req, reply) => {
-    const q = CloudMapQuerySchema.parse((req as any).query ?? {});
+    const q = ForecastCloudMapQuerySchema.parse((req as any).query ?? {});
 
     const location = await getLocationById(db, q.locationId);
     if (!location) {

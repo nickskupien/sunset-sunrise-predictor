@@ -1,16 +1,6 @@
 import type { FastifyInstance } from "fastify";
-import { z } from "zod";
+import { CreateLocationBodySchema, ListLocationsQuerySchema } from "@sunset/contracts";
 import { createDb, listLocations, upsertLocation } from "@sunset/db";
-
-const ListLocationsQuerySchema = z.object({
-  limit: z.coerce.number().int().min(1).max(500).default(100),
-});
-
-const CreateLocationBodySchema = z.object({
-  lat: z.coerce.number().min(-90).max(90),
-  lon: z.coerce.number().min(-180).max(180),
-  name: z.string().trim().min(1).max(120).optional(),
-});
 
 export async function registerLocationsRoutes(app: FastifyInstance) {
   const databaseUrl = process.env.DATABASE_URL;
