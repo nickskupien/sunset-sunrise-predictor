@@ -5,6 +5,10 @@ import { useEffect, useMemo, useState } from "react";
 import { MapContainer, TileLayer, CircleMarker, Popup, useMap, useMapEvents } from "react-leaflet";
 import { Button } from "@/components/ui/button";
 import {
+  readStoredLocationPickerState,
+  writeStoredLocationPickerState,
+} from "@/lib/location-picker-storage";
+import {
   Select,
   SelectContent,
   SelectGroup,
@@ -76,6 +80,7 @@ export function LocationPickerMap() {
   const [customLocationNameInput, setCustomLocationNameInput] = useState("");
   const [existingLocations, setExistingLocations] = useState<ExistingLocation[]>([]);
   const [saveState, setSaveState] = useState<SaveState>({ status: "idle" });
+  const [isLoadedFromIndexedDb, setIsLoadedFromIndexedDb] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -112,6 +117,40 @@ export function LocationPickerMap() {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadStoredSelection() {
+      const stored = await readStoredLocationPickerState();
+      if (cancelled) return;
+
+      if (stored) {
+        setLocationNameSelection(stored.locationNameSelection);
+        setCustomLocationNameInput(stored.customLocationNameInput);
+        setLat(stored.lat);
+        setLon(stored.lon);
+      }
+
+      setIsLoadedFromIndexedDb(true);
+    }
+
+    void loadStoredSelection();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isLoadedFromIndexedDb) return;
+
+    void writeStoredLocationPickerState({
+      locationNameSelection,
+      customLocationNameInput,
+      lat,
+      lon,
+    });
+  }, [isLoadedFromIndexedDb, locationNameSelection, customLocationNameInput, lat, lon]);
 
   const selected = useMemo(() => {
     if (lat == null || lon == null) return null;

@@ -178,7 +178,7 @@ export function ForecastCloudLeafletMap({
               ]
             }
             pathOptions={{
-              color: "rgba(0, 0, 0, 0.15)",
+              color: "rgba(0, 0, 0, 0.05)",
               weight: 2,
               fillColor: cloudCoverageColor(getLayerValue(cell, layer)),
               fillOpacity: 0.5,

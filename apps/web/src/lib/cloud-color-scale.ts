@@ -9,8 +9,8 @@ const CIVIDIS_STOPS: ColorStop[] = [
   { position: 0, rgb: { r: 0, g: 32, b: 76 } },
   { position: 0.25, rgb: { r: 51, g: 74, b: 124 } },
   { position: 0.5, rgb: { r: 104, g: 111, b: 120 } },
-  { position: 0.75, rgb: { r: 162, g: 151, b: 99 } },
-  { position: 1, rgb: { r: 253, g: 231, b: 84 } },
+  { position: 0.75, rgb: { r: 162, g: 151, b: 130 } },
+  { position: 1, rgb: { r: 253, g: 231, b: 170 } },
 ];
 
 function lerp(a: number, b: number, t: number) {
