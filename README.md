@@ -5,7 +5,7 @@ As an avid photographer, I find myself planning shoots with various weather cond
 Conditions like:
 - Misty sunrises
 - Sunsets where the entire sky lights up red
-— Smoky hazy skies
+- Smoky hazy skies
 - Frost covered trees
 
 I want to prepare for these conditions in advance, and even plan trips around the conditions.
