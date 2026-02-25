@@ -8,8 +8,7 @@ export default function HomePage() {
       <section className="space-y-3">
         <h1 className="text-4xl font-semibold tracking-tight">Sunset Predictor</h1>
         <p className="max-w-2xl text-muted-foreground">
-          Routing foundation is ready. We can now build each page in focused iterations without changing
-          core app structure.
+          Predict unique, rare, and photogenic weather conditions in advance.
         </p>
       </section>
 
@@ -21,7 +20,7 @@ export default function HomePage() {
 
       <section className="w-full space-y-3">
         <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
-          Planned Core Routes
+          Core Pages
         </h2>
         <ul className="grid gap-2">
           {appNavItems.map((item) => (
