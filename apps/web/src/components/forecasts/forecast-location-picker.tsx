@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,6 +20,7 @@ import {
 type ForecastLocationPickerProps = {
   options: Array<{ id: number; label: string }>;
   selectedId: number;
+  extraAction?: ReactNode;
 };
 
 const REFRESH_FORECAST_DAYS = 7;
@@ -35,7 +36,11 @@ function delay(ms: number) {
   });
 }
 
-export function ForecastLocationPicker({ options, selectedId }: ForecastLocationPickerProps) {
+export function ForecastLocationPicker({
+  options,
+  selectedId,
+  extraAction,
+}: ForecastLocationPickerProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -212,7 +217,7 @@ export function ForecastLocationPicker({ options, selectedId }: ForecastLocation
   }
 
   return (
-    <div className="max-w-md space-y-2">
+    <div className="w-full space-y-2">
       <label htmlFor="locationId" className="text-sm font-medium">
         Location
       </label>
@@ -250,6 +255,7 @@ export function ForecastLocationPicker({ options, selectedId }: ForecastLocation
         >
           {isRefreshing ? "Refreshing..." : "Refresh"}
         </Button>
+        {extraAction ? <div className="ml-auto">{extraAction}</div> : null}
       </div>
       {isRefreshing && refreshProgress ? (
         <p className="text-sm text-muted-foreground">{refreshProgress}</p>
