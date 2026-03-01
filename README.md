@@ -1,6 +1,6 @@
 # Overview
 
-As an avid photographer, I find myself planning shoots with various weather conditions in mind. 
+As an avid photographer, I find myself planning shoots with various weather conditions in mind.
 
 Conditions like:
 - Misty sunrises
@@ -61,3 +61,32 @@ docker compose up --build
 # Notes
 - Inside Docker, the web app reaches the API at `http://api:3001`
 - Postgres is available to services at host `postgres:5432`
+
+# Lighthouse CI
+Lighthouse CI is integrated for automated web performance/accessibility audits.
+
+## Local usage
+1) Run audits
+```bash
+pnpm lighthouse:audit
+```
+
+2) Start dashboard
+```bash
+pnpm lighthouse:dashboard:start
+```
+
+3) Upload to dashboard
+```bash
+pnpm lighthouse:dashboard:upload
+```
+
+## Reports output
+- Raw LHCI output: `.lighthouseci/`
+- Human-readable reports by commit: `reports/lighthouse/YYYYMMDD-HASH/`
+- Commit index page: `reports/lighthouse/YYYYMMDD-HASH/index.html`
+
+## CI workflow
+- GitHub Actions workflow: `.github/workflows/lighthouse-ci.yml`
+
+For full setup and token wiring, see `docs/lighthouse-ci.md`.

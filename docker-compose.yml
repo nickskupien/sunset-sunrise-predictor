@@ -123,6 +123,43 @@ services:
       - contracts_node_modules:/app/packages/contracts/node_modules
       - config_node_modules:/app/packages/config/node_modules
 
+  lhci-server:
+    image: patrickhulce/lhci-server:0.13.0
+    platform: linux/amd64
+    env_file:
+      - path: .env
+        required: false
+    command:
+      [
+        "npm",
+        "start",
+        "--",
+        "--port=9001",
+        "--storage.storageMethod=sql",
+        "--storage.sqlDialect=sqlite",
+        "--storage.sqlDatabasePath=/data/lhci.db",
+        "--basicAuth.username=${LHCI_BASIC_AUTH_USERNAME:-admin}",
+        "--basicAuth.password=${LHCI_BASIC_AUTH_PASSWORD:-admin}",
+      ]
+    ports:
+      - "9001:9001"
+    volumes:
+      - lhci_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "require('http').get('http://127.0.0.1:9001/', (res) => process.exit(res.statusCode < 500 ? 0 : 1)).on('error', () => process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    profiles:
+      - observability
+
 volumes:
   pgdata:
 
@@ -137,3 +174,4 @@ volumes:
   db_node_modules:
   contracts_node_modules:
   config_node_modules:
+  lhci_data:
